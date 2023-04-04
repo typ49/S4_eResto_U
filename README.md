@@ -11,3 +11,7 @@ TP2 : HTML (formulaire) / CSS 						-> menu.html, 'update' eResto.css
 TP3 : PHP - affichage du menu 						-> index.php, 'début' menu.php
 
 TP4 : PHP - traitement de formulaire et session 	-> connexion.php
+
+###
+
+avancement : ->	Etape 3 : inscription_2.php

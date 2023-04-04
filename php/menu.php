@@ -1,279 +1,271 @@
 <?php
 
-// chargement des bibliothèques
-require_once('bibli_generale.php');
-require_once('bibli_erestou.php');
+// chargement des bibliothèques de fonctions
+require_once 'bibli_erestou.php';
+require_once 'bibli_generale.php';
 
-// Header
-$cheminRelatif = '..';
-$cheminStyles = 'styles/eResto.css';
-affEntete ("Menu", $cheminStyles, $cheminRelatif);
-// Barre de navigation
-affNav('../index.php', '#', '../connexion.php');
+// bufferisation des sorties
+ob_start();
 
-function affMenu () {
-	$bd = bdConnect();
-	$sql = 'SELECT plID, plNom, plCategorie, plCalories, plCarbone FROM plat LEFT OUTER JOIN menu on plID = mePlat WHERE meDate = 20230320;';
-	$r = bdSendRequest($bd, $sql);
-	//-- Traitement -------------------------------------
-	echo '<ul style="list-style-type:disc;">';
-	while ($enr = mysqli_fetch_assoc($r)) {
-		echo '<li>', 'id = ', $enr['plID'], ', nom = ',$enr['plNom'], ', categorie = ', $enr['plCategorie'], ', apport énergétique = ', $enr['plCalories'], ', empreinte carbone = ', $enr['plCarbone'], '</li>';
-	}	
-	echo '</ul>';
+// affichage de l'entête
+affEntete('Menus et repas');
+// affichage de la barre de navigation
+affNav();
 
-	// Libération de la mémoire associée au résultat de la requête
-	mysqli_free_result($r);
-	mysqli_close($bd);
-}
+// contenu de la page 
+affContenuL();
 
-
-
-function affMenuCategorie () {
-	$listeMois = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre' ];
-	$jourj = getdate();
-	$validiteDate = true;
-	$a = $jourj['year'];
-	$m = $jourj['mon'];
-	$j = $jourj['mday'];
-	$enToFr = ['Monday' => 'Lundi', 'Tuesday' => 'Mardi', 'Wednesday' => 'Mercredi', 'Thursday' => 'Jeudi', 'Friday' => 'Vendredi', 'Saturday' => 'Samedi', 'Sunday' => 'Dimanche'];
-	
-	/* ---------------- BOUCLE DE LA VALIDITÉ D'UNE DATE ---------------------- */
-	// boucle de lecture permettant de vérifier la validité d'une date
-	// PS : les samedis, dimanches ne sont pas des jours ouvrées
-	foreach ($_GET as $key => $valeur) {
-		if ($key != 'jour' && $key != 'mois' && $key != 'annee'){
-			$message = "Erreur : le champ '$key' n'est pas valide.";
-			$validiteDate = false;
-			break;
-		}
-		if (!ctype_digit($valeur)) {
-			$validiteDate = false;
-			$message = "Erreur : le champ '$key' n'est pas un entier.";
-			break;
-		}
-		if ($key == 'jour') {
-			//verification validite du jour
-			$j = $valeur;
-		}elseif ($key == 'mois') {
-			//verification validite du mois
-			$m = $valeur;
-		}elseif ($key == 'annee') {
-			//verification validite de l'annee
-			if (strlen($valeur) != 4) {
-				$validiteDate = false;
-				$message = "Erreur : le champ '$key' n'est pas sur 4 chiffres.";
-				break;
-			}
-			if ($valeur != 2022 && $valeur != 2023) {
-				$validiteDate = false;
-				$message = "Erreur : le champ '$key' n'est pas égal à 2022 ou 2023.";
-				break;
-			}
-			$a = $valeur;
-		}
-	}
-	
-	// On créer une nouvelle date (ça se fera dynamiquement ensuite)
-	$Date = "$j-$m-$a";
-	$creerDate = date_create_from_format('d-m-Y', $Date);
-	
-	if ($creerDate == true && checkdate($m, $j, $a)) {
-		$jour = date_format($creerDate, 'l');
-		if($jour == 'Saturday' || $jour == 'Sunday'){
-			$validiteDate = false;
-			$message = "Aucun repas n'est servi ce jour.";
-		}
-		echo '<h2>', $enToFr[$jour],' ',$j,' ', $listeMois[$m - 1],' ', $a, '</h2>';
-		$prev_day = clone $creerDate;
-		$prev_day->modify('-1 day');
-
-		$prev_week = date_format($prev_day, 'l');
-		if($prev_week == 'Sunday'){
-			$prev_day->modify('-2 day');
-		}else if($prev_week == 'Saturday'){
-			$prev_day->modify('-1 day');
-		}
-		$next_day = clone $creerDate;
-		$next_day->modify('+1 day');
-
-		$next_week = date_format($next_day, 'l');
-		if($next_week == 'Sunday'){
-			$next_day->modify('+1 day');
-		}else if($next_week == 'Saturday'){
-			$next_day->modify('+2 day');
-		}
-		$j_next = date_format($next_day, 'j');
-		$m_next = date_format($next_day, 'n');
-		$a_next = date_format($next_day, 'Y');
-		$j_prev = date_format($prev_day, 'j');
-		$m_prev = date_format($prev_day, 'n');
-		$a_prev = date_format($prev_day, 'Y');
-
-	} else {
-		$validiteDate = false;
-		$message = "La date '$Date' est invalide.";    
-	}
-	/* ---------------- BOUCLE DE LA VALIDITÉ D'UNE DATE ---------------------- */
-	
-	/* ---------------- AFFICHAGE DU FORMULAIRE DE DATE
-	 * 					AINSI QUE DES DEUX BOUTONS (PREV - NEXT)
-	 * ----------------
-	 * */
-	 // C'est (certes) pas très propre mais ça fonctionne
-	 echo
-'<form id="navDate" action="menu.php" method="GET">',
-    '<a href="menu.php?jour=',$j_prev,'&amp;mois=',$m_prev,'&amp;annee=',$a_prev,'">Jour précédent</a>',
-    '<a href="menu.php?jour=',$j_next,'&amp;mois=',$m_next,'&amp;annee=',$a_next,'">Jour suivant</a>',
-    'Date :',
-    '<select name="jour">',
-        '<option value="1">1</option>',
-        '<option value="2">2</option>',
-        '<option value="3">3</option>',
-        '<option value="4">4</option>',
-        '<option value="5">5</option>',
-        '<option value="6" selected>6</option>',
-        '<option value="7">7</option>',
-        '<option value="8">8</option>',
-        '<option value="9">9</option>',
-        '<option value="10">10</option>',
-        '<option value="11">11</option>',
-        '<option value="12">12</option>',
-        '<option value="13">13</option>',
-        '<option value="14">14</option>',
-        '<option value="15">15</option>',
-        '<option value="16">16</option>',
-        '<option value="17">17</option>',
-        '<option value="18">18</option>',
-        '<option value="19">19</option>',
-        '<option value="20">20</option>',
-        '<option value="21">21</option>',
-        '<option value="22">22</option>',
-        '<option value="23">23</option>',
-        '<option value="24">24</option>',
-        '<option value="25">25</option>',
-        '<option value="26">26</option>',
-        '<option value="27">27</option>',
-        '<option value="28">28</option>',
-        '<option value="29">29</option>',
-        '<option value="30">30</option>',
-        '<option value="31">31</option>',
-    '</select>',
-    '<select name="mois">',
-        '<option value="1">janvier</option>',
-        '<option value="2">février</option>',
-        '<option value="3" selected>mars</option>',
-        '<option value="4">avril</option>',
-        '<option value="5">mai</option>',
-        '<option value="6">juin</option>',
-        '<option value="7">juillet</option>',
-        '<option value="8">août</option>',
-        '<option value="9">septembre</option>',
-        '<option value="10">octobre</option>',
-        '<option value="11">novembre</option>',
-        '<option value="12">décembre</option>',
-    '</select>',
-    '<select name="annee">',
-        '<option value="2022">2022</option>',
-        '<option value="2023" selected>2023</option>',
-    '</select>',
-    '<input type="submit" value="Consulter">',
-'</form>',
-'<p class="notice">',
-    '<img src="../images/notice.png" alt="notice" width="50" height="48">',
-    'Tous les plateaux sont composés avec un verre, un couteau, une fouchette et une petite cuillère.',
-'</p>'; 
-	 
-	 /* ---------------- AFFICHAGE DU FORMULAIRE DE DATE
-	 * 					AINSI QUE DES DEUX BOUTONS (PREV - NEXT)
-	 * ----------------
-	 * */
-	 
-	// DERNIÈRE VÉRIFICATION DE LA VALIDITÉ DE LA DATE
-	// ENSUITE : CONNEXION À LA BASE DE DONNÉES
-	if (!$validiteDate) {
-		echo '<p>',$message,'</p>';
-		// autant quitter direct
-		die(); 
-	}
-	// CONNEXION À LA BASE DE DONNÉES
-	$bd = bdConnect();  
-	if ($m < 10) {
-		$m = "0$m";
-	}
-	if ($j < 10) {
-		$j = "0$j";
-	}
-	// avant toute chose, on doit effectuer un rapide formatage de la date
-	// dans la BD, la date est sous la forme AAAAMMJJ
-	// étant donné que la boucle précédente nous donne une valeur numérique de ces champs
-	// on a plus qu'à créer une variable pour avoir la date au bon format, like : 
-	$date = "$a$m$j"; 
-	$sql = "SELECT plID, plNom, plCategorie, plCalories, plCarbone FROM plat LEFT OUTER JOIN menu ON plID = mePlat WHERE meDate = $date OR meDate IS NULL AND plCategorie IN ('boisson');";
-	$r = bdSendRequest($bd, $sql);
-	$categories = array(
-		'entree' => array(),
-		'plat' => array(),
-		'accompagnement' => array(),
-		'dessert' => array(),
-		'boisson' => array()
-	);
-	while ($enr = mysqli_fetch_assoc($r)) {
-		if ($enr['plCategorie'] == 'viande' || $enr['plCategorie'] == 'poisson') {
-            $categories['plat'][] = $enr;
-        } else if($enr['plCategorie'] == 'fromage') {
-            $categories['dessert'][] = $enr;
-            
-        } else {
-            $categories[$enr['plCategorie']][] = $enr;
-            
-        }
-	}
-	$enritre="";
-	// BOUCLE D'AFFICHAGE DES RÉSULTATS DE LA REQUÊTE SQL
-	// MÊME AFFICHAGE QUE LE TP2
-	foreach ($categories as $cat => $plats) {
-		// trier les plats en fonction de leur catégorie
-		switch ($cat) {
-			case 'entree':
-				$enritre = "Entrées";
-				$bouton = 'radio';
-				break;
-			case 'viande':
-			case 'poisson':
-			case 'plat';
-				$enritre = "Plats";
-				$bouton = 'radio';
-				break;
-			case 'accompagnement':
-				$enritre = "Accompagnement(s)";
-				$bouton = 'checkbox';
-				break;
-			case 'fromage':
-			case 'dessert':
-				$enritre = "Fromage/dessert";
-				$bouton = 'radio';
-				break;
-			case 'boisson':
-				$enritre = "Boissons";
-				$bouton = 'radio';
-				break;
-		}
-		echo '<section class="bcChoix">', '<h3>', $enritre, '</h3>';
-		foreach ($plats as $pl) {
-			echo 
-				'<input type="', $bouton, '" id="', $pl['plID'], '" name="', $cat, '" ', ($bouton == 'radio')? "checked" : "",'>',
-				'<label for="', $pl['plID'], '"><img src="../images/repas/', $pl['plID'] ,'.jpg" alt=""><br>', $pl['plNom'], '<br><span>', $pl['plCarbone'], 'kg eqCO2 / ', $pl['plCalories'], 'kcal</span></label>';
-					
-		}
-		echo '</section>';
-	}
-	mysqli_free_result($r);
-	mysqli_close($bd);
-}
-// Menu sans style, juste récupération de la requête SQL en liste à puces
-//affMenu();
-// Menu avec style
-affMenuCategorie();
-// Footer
+// affichage du pied de page
 affPiedDePage();
+
+// fin du script --> envoi de la page 
+ob_end_flush();
+
+
+//_______________________________________________________________
+/**
+ * Vérifie la validité des paramètres reçus dans l'URL, renvoie la date affichée ou l'erreur détectée
+ *
+ * La date affichée est initialisée avec la date courante ou actuelle.
+ * Les éventuels paramètres jour, mois, annee, reçus dans l'URL, permettent respectivement de modifier le jour, le mois, et l'année de la date affichée.
+ *
+ * @return int|string      string en cas d'erreur, int représentant la date affichée au format AAAAMMJJ sinon
+ */
+function dateConsulteeL() : int|string {
+    if (!parametresControle('GET', [], ['jour', 'mois', 'annee'])){
+        return 'Nom de paramètre invalide détecté dans l\'URL.';
+    }
+
+    // date d'aujourd'hui
+    list($jour, $mois, $annee) = getJourMoisAnneeFromDate(DATE_AUJOURDHUI);
+
+    // vérification si les valeurs des paramètres reçus sont des chaînes numériques entières
+    foreach($_GET as $cle => $val){
+        if (! estEntier($val)){
+            return 'Valeur de paramètre non entière détectée dans l\'URL.';
+        }
+        // modification du jour, du mois ou de l'année de la date affichée
+        $$cle = (int)$val;
+    }
+
+    if ($annee < 1000 || $annee > 9999){
+        return 'La valeur de l\'année n\'est pas sur 4 chiffres.';
+    }
+    if (!checkdate($mois, $jour, $annee)) {
+        return "La date demandée \"$jour/$mois/$annee\" n'existe pas.";
+    }
+    if ($annee < ANNEE_MIN){
+        return 'L\'année doit être supérieure ou égale à '.ANNEE_MIN.'.';
+    }
+    if ($annee > ANNEE_MAX){
+        return 'L\'année doit être inférieure ou égale à '.ANNEE_MAX.'.';
+    }
+    return $annee*10000 + $mois*100 + $jour;
+}
+//_______________________________________________________________
+/**
+ * Génération de la navigation entre les dates
+ *
+ * @param  int     $date   date affichée
+ *
+ * @return void
+ */
+function affNavigationDateL(int $date): void{
+    list($jour, $mois, $annee) = getJourMoisAnneeFromDate($date);
+
+    // on détermine le jour précédent (ni samedi, ni dimanche)
+    $jj = 0;
+    do {
+        $jj--;
+        $dateVeille = getdate(mktime(12, 0, 0, $mois, $jour+$jj, $annee));
+    } while ($dateVeille['wday'] == 0 || $dateVeille['wday'] == 6);
+    // on détermine le jour suivant (ni samedi, ni dimanche)
+    $jj = 0;
+    do {
+        $jj++;
+        $dateDemain = getdate(mktime(12, 0, 0, $mois, $jour+$jj, $annee));
+    } while ($dateDemain['wday'] == 0 || $dateDemain['wday'] == 6);
+
+    $dateJour = getdate(mktime(12, 0, 0, $mois, $jour, $annee));
+    $jourSemaine = array('Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi');
+
+    // affichage de la navigation pour choisir le jour affiché
+    echo '<h2>',
+            $jourSemaine[$dateJour['wday']], ' ',
+            $jour, ' ',
+            getTableauMois()[$dateJour['mon']-1], ' ',
+            $annee,
+        '</h2>',
+
+        // on utilise un formulaire qui renvoie sur la page courante avec une méthode GET pour faire apparaître les 3 paramètres sur l'URL
+        '<form id="navDate" action="menu.php" method="GET">',
+            '<a href="menu.php?jour=', $dateVeille['mday'], '&amp;mois=', $dateVeille['mon'], '&amp;annee=',  $dateVeille['year'], '">Jour précédent</a>',
+            '<a href="menu.php?jour=', $dateDemain['mday'], '&amp;mois=', $dateDemain['mon'], '&amp;annee=', $dateDemain['year'], '">Jour suivant</a>',
+            'Date : ';
+
+    affListeNombre('jour', 1, 31, 1, $jour);
+    affListeMois('mois', $mois);
+    affListeNombre('annee', ANNEE_MIN, ANNEE_MAX, 1, $annee);
+
+    echo    '<input type="submit" value="Consulter">',
+        '</form>';
+        // le bouton submit n'a pas d'attribut name. Par conséquent, il n'y a pas d'élément correspondant transmis dans l'URL lors de la soumission
+        // du formulaire. Ainsi, l'URL de la page a toujours la même forme (http://..../php/menu.php?jour=7&mois=3&annee=2023) quel que soit le moyen
+        // de navigation utilisé (formulaire avec bouton 'Consulter', ou lien 'précédent' ou 'suivant')
+}
+
+//_______________________________________________________________
+/**
+ * Récupération du menu de la date affichée
+ *
+ * @param int       $date           date affichée
+ * @param array     $menu           menu de la date affichée (paramètre de sortie)
+ *
+ * @return bool                     true si le restoU est ouvert, false sinon
+ */
+function bdMenuL(int $date, array &$menu) : bool {
+
+    // ouverture de la connexion à la base de données
+    $bd = bdConnect();
+
+    // Récupération des plats qui sont proposés pour le menu (boissons incluses, divers exclus)
+    $sql = "SELECT plID, plNom, plCategorie, plCalories, plCarbone
+            FROM plat LEFT JOIN menu ON (plID=mePlat AND meDate=$date)
+            WHERE mePlat IS NOT NULL OR plCategorie = 'boisson'";
+
+    // envoi de la requête SQL
+    $res = bdSendRequest($bd, $sql);
+
+    // Quand le resto U est fermé, la requête précédente renvoie tous les enregistrements de la table Plat de
+    // catégorie boisson : il y en a NB_CAT_BOISSON
+    if (mysqli_num_rows($res) <= NB_CAT_BOISSON) {
+        // libération des ressources
+        mysqli_free_result($res);
+        // fermeture de la connexion au serveur de base de  données
+        mysqli_close($bd);
+        return false; // ==> fin de la fonction bdMenuL()
+    }
+
+
+    // tableau associatif contenant les constituants du menu : un élément par section
+    $menu = array(  'entrees'           => array(),
+                    'plats'             => array(),
+                    'accompagnements'   => array(),
+                    'desserts'          => array(),
+                    'boissons'          => array()
+                );
+
+    // parcours des ressources :
+    while ($tab = mysqli_fetch_assoc($res)) {
+        switch ($tab['plCategorie']) {
+            case 'entree':
+                $menu['entrees'][] = $tab;
+                break;
+            case 'viande':
+            case 'poisson':
+                $menu['plats'][] = $tab;
+                break;
+            case 'accompagnement':
+                $menu['accompagnements'][] = $tab;
+                break;
+            case 'dessert':
+            case 'fromage':
+                $menu['desserts'][] = $tab;
+                break;
+            default:
+                $menu['boissons'][] = $tab;
+        }
+    }
+    // libération des ressources
+    mysqli_free_result($res);
+    // fermeture de la connexion au serveur de base de  données
+    mysqli_close($bd);
+    return true;
+}
+
+//_______________________________________________________________
+/**
+ * Affichage d'un des constituants du menu.
+ *
+ * @param  array       $p      tableau associatif contenant les informations du plat en cours d'affichage
+ *
+ * @return void
+ */
+function affPlatL(array $p): void {
+
+    // utilisé pour les boutons radio
+    $categorie2name = array('entree' => 'radEntree', 'viande' => 'radPlat', 'poisson' => 'radPlat',
+                            'dessert' => 'radDessert', 'fromage' => 'radDessert', 'boisson' => 'radBoisson');
+
+    if (array_key_exists($p['plCategorie'], $categorie2name)){ //radio bonton
+        $name = $categorie2name[$p['plCategorie']];
+        $id = "{$name}{$p['plID']}";
+        $type = 'radio';
+    }
+    else{ //checkbox
+        $id = $name = "cb{$p['plID']}";
+        $type = 'checkbox';
+    }
+
+    // protection des sorties contre les attaques XSS
+    $p['plNom'] = htmlentities($p['plNom'], ENT_QUOTES, encoding:'UTF-8');
+
+    echo    '<input id="', $id, '" name="', $name, '" type="', $type, '" value="', $p['plID'], '" disabled>',
+            '<label for="', $id,'">',
+                '<img src="../images/repas/', $p['plID'], '.jpg" alt="', $p['plNom'], '" title="', $p['plNom'], '">',
+                $p['plNom'], '<br>', '<span>', $p['plCarbone'],'kg eqCO2 / ', $p['plCalories'], 'kcal</span>',
+            '</label>';
+
+}
+
+//_______________________________________________________________
+/**
+ * Génère le contenu de la page.
+ *
+ * @return void
+ */
+function affContenuL(): void {
+
+    $date = dateConsulteeL();
+
+    // si dateConsulteeL() renvoie une erreur
+    if (is_string($date)){
+        echo    '<h4 class="center nomargin">Erreur</h4>',
+                '<p>', $date, '</p>',
+                (strpos($date, 'URL') !== false) ?
+                '<p>Il faut utiliser une URL de la forme :<br>http://..../php/menu.php?jour=7&mois=3&annee=2023</p>':'';
+        return; // ==> fin de la fonction affContenuL()
+    }
+    // si on arrive à ce point de l'exécution, alors la date est valide
+    
+    // Génération de la navigation entre les dates 
+    affNavigationDateL($date);
+
+    // menu du jour
+    $menu = [];
+
+    $restoOuvert = bdMenuL($date, $menu);
+
+    if (! $restoOuvert){
+        echo '<p>Aucun repas n\'est servi ce jour.</p>';
+        return; // ==> fin de la fonction affContenuL()
+    }
+    
+    // titre h3 des sections à afficher
+    $h3 = array('entrees'           => 'Entrée',
+                'plats'             => 'Plat', 
+                'accompagnements'   => 'Accompagnement(s)',
+                'desserts'          => 'Fromage/dessert', 
+                'boissons'          => 'Boisson'
+                );
+    
+    // affichage du menu
+    foreach($menu as $key => $value){
+        echo '<section class="bcChoix"><h3>', $h3[$key], '</h3>';
+        foreach ($value as $p) {
+            affPlatL($p);
+        }
+        echo '</section>';
+    }
+
+}

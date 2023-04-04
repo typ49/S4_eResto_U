@@ -1,12 +1,22 @@
 <?php
-define('IS_DEV', true);
-define('BD_SERVER', 'localhost');
-define('BD_USER','e_RestoU_user');
-define('BD_PASS','e_RestoU_pass');
-define('BD_NAME','e_RestoU_bd');
-
-//____________________________________________________________________________
-/**
+/*********************************************************
+ *        Bibliothèque de fonctions génériques          
+ * 
+ * Les régles de nommage sont les suivantes.
+ * Les noms des fonctions respectent la notation camel case.
+ *
+ * Ils commencent en général par un terme définisant le "domaine" de la fonction :
+ *  aff   la fonction affiche du code html / texte destiné au navigateur
+ *  html  la fonction renvoie du code html / texte
+ *  bd    la fonction gère la base de données
+ *
+ * Les fonctions qui ne sont utilisés que dans un seul script
+ * sont définies dans le script et les noms de ces fonctions se
+ * sont suffixées avec la lettre 'L'.
+ *
+ *********************************************************/
+ 
+ /**
  * Arrêt du script si erreur de base de données
  *
  * Affichage d'un message d'erreur, puis arrêt du script
@@ -18,54 +28,55 @@ define('BD_NAME','e_RestoU_bd');
  *
  * @return void
  */
-function bdErreurExit(array $err): void
-{
+function bdErreurExit(array $err):void {
     ob_end_clean(); // Suppression de tout ce qui a pu être déja généré
 
-    echo '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">',
-        '<title>Erreur',
-        IS_DEV ? ' base de données' : '', '</title>',
-        '</head><body>';
-    if (IS_DEV) {
+    echo    '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">',
+            '<title>Erreur',
+            IS_DEV ? ' base de données': '', '</title>',
+            '</head><body>';
+    if (IS_DEV){
         // Affichage de toutes les infos contenues dans $err
-        echo '<h4>', $err['titre'], '</h4>',
-            '<pre>',
-            '<strong>Erreur mysqli</strong> : ', $err['code'], "\n",
-            $err['message'], "\n";
-        if (isset($err['autres'])) {
+        echo    '<h4>', $err['titre'], '</h4>',
+                '<pre>',
+                    '<strong>Erreur mysqli</strong> : ',  $err['code'], "\n",
+                    $err['message'], "\n";
+        if (isset($err['autres'])){
             echo "\n";
-            foreach ($err['autres'] as $cle => $valeur) {
-                echo '<strong>', $cle, '</strong> :', "\n", $valeur, "\n";
+            foreach($err['autres'] as $cle => $valeur){
+                echo    '<strong>', $cle, '</strong> :', "\n", $valeur, "\n";
             }
         }
-        echo "\n", '<strong>Pile des appels de fonctions :</strong>', "\n", $err['appels'],
-            '</pre>';
-    } else {
+        echo    "\n",'<strong>Pile des appels de fonctions :</strong>', "\n", $err['appels'],
+                '</pre>';
+    }
+    else {
         echo 'Une erreur s\'est produite';
     }
 
-    echo '</body></html>';
+    echo    '</body></html>';
 
-    if (!IS_DEV) {
+    if (! IS_DEV){
         // Mémorisation des erreurs dans un fichier de log
         $fichier = @fopen('error.log', 'a');
-        if ($fichier) {
-            fwrite($fichier, '[' . date('d/m/Y') . ' ' . date('H:i:s') . "]\n");
-            fwrite($fichier, $err['titre'] . "\n");
+        if($fichier){
+            fwrite($fichier, '['.date('d/m/Y').' '.date('H:i:s')."]\n");
+            fwrite($fichier, $err['titre']."\n");
             fwrite($fichier, "Erreur mysqli : {$err['code']}\n");
             fwrite($fichier, "{$err['message']}\n");
-            if (isset($err['autres'])) {
-                foreach ($err['autres'] as $cle => $valeur) {
-                    fwrite($fichier, "{$cle} :\n{$valeur}\n");
+            if (isset($err['autres'])){
+                foreach($err['autres'] as $cle => $valeur){
+                    fwrite($fichier,"{$cle} :\n{$valeur}\n");
                 }
             }
-            fwrite($fichier, "Pile des appels de fonctions :\n");
+            fwrite($fichier,"Pile des appels de fonctions :\n");
             fwrite($fichier, "{$err['appels']}\n\n");
             fclose($fichier);
         }
     }
-    exit(1); // ==> ARRET DU SCRIPT
+    exit(1);        // ==> ARRET DU SCRIPT
 }
+
 
 //____________________________________________________________________________
 /**
@@ -76,33 +87,32 @@ function bdErreurExit(array $err): void
  *
  *  @return mysqli  objet connecteur à la base de données
  */
-function bdConnect(): mysqli
-{
+function bdConnect(): mysqli {
     // pour forcer la levée de l'exception mysqli_sql_exception
     // si la connexion échoue
     mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-    try {
+    try{
         $conn = mysqli_connect(BD_SERVER, BD_USER, BD_PASS, BD_NAME);
-    } catch (mysqli_sql_exception $e) {
+    }
+    catch(mysqli_sql_exception $e){
         $err['titre'] = 'Erreur de connexion';
         $err['code'] = $e->getCode();
         // $e->getMessage() est encodée en ISO-8859-1, il faut la convertir en UTF-8
         $err['message'] = mb_convert_encoding($e->getMessage(), 'UTF-8', 'ISO-8859-1');
         $err['appels'] = $e->getTraceAsString(); //Pile d'appels
-        $err['autres'] = array(
-            'Paramètres' => 'BD_SERVER : ' . BD_SERVER
-            . "\n" . 'BD_USER : ' . BD_USER
-            . "\n" . 'BD_PASS : ' . BD_PASS
-            . "\n" . 'BD_NAME : ' . BD_NAME
-        );
+        $err['autres'] = array('Paramètres' =>   'BD_SERVER : '. BD_SERVER
+                                                    ."\n".'BD_USER : '. BD_USER
+                                                    ."\n".'BD_PASS : '. BD_PASS
+                                                    ."\n".'BD_NAME : '. BD_NAME);
         bdErreurExit($err); // ==> ARRET DU SCRIPT
     }
-    try {
+    try{
         //mysqli_set_charset() définit le jeu de caractères par défaut à utiliser lors de l'envoi
         //de données depuis et vers le serveur de base de données.
         mysqli_set_charset($conn, 'utf8');
-        return $conn; // ===> Sortie connexion OK
-    } catch (mysqli_sql_exception $e) {
+        return $conn;     // ===> Sortie connexion OK
+    }
+    catch(mysqli_sql_exception $e){
         $err['titre'] = 'Erreur lors de la définition du charset';
         $err['code'] = $e->getCode();
         $err['message'] = mb_convert_encoding($e->getMessage(), 'UTF-8', 'ISO-8859-1');
@@ -110,6 +120,7 @@ function bdConnect(): mysqli
         bdErreurExit($err); // ==> ARRET DU SCRIPT
     }
 }
+
 
 //____________________________________________________________________________
 /**
@@ -125,16 +136,156 @@ function bdConnect(): mysqli
  *
  * @return  mysqli_result|bool          Résultat de la requête
  */
-function bdSendRequest(mysqli $bd, string $sql): mysqli_result|bool
-{
-    try {
+function bdSendRequest(mysqli $bd, string $sql): mysqli_result|bool {
+    try{
         return mysqli_query($bd, $sql);
-    } catch (mysqli_sql_exception $e) {
+    }
+    catch(mysqli_sql_exception $e){
         $err['titre'] = 'Erreur de requête';
         $err['code'] = $e->getCode();
         $err['message'] = $e->getMessage();
         $err['appels'] = $e->getTraceAsString();
         $err['autres'] = array('Requête' => $sql);
-        bdErreurExit($err); // ==> ARRET DU SCRIPT
+        bdErreurExit($err);    // ==> ARRET DU SCRIPT
     }
 }
+
+//___________________________________________________________________
+/**
+ * Teste si une valeur est une valeur entière
+ *
+ * @param   mixed    $x  valeur à tester
+ *
+ * @return  bool     true si entier, false sinon
+ */
+function estEntier(mixed $x):bool {
+    return is_numeric($x) && ($x == (int) $x);
+}
+
+
+//___________________________________________________________________
+/**
+ * Créé une liste déroulante à partir des options passées en paramètres.
+ *
+ * @param string     $nom       Le nom de la liste déroulante
+ * @param array      $options   Un tableau associatif donnant la liste des options sous la forme valeur => libelle
+ * @param string     $default   La valeur qui doit être sélectionnée par défaut.
+ *
+ * @return void
+ */
+function affListe(string $nom, array $options, string $defaut): void {
+    echo '<select name="', $nom, '">';
+    foreach ($options as $valeur => $libelle) {
+        echo '<option value="', $valeur, '"', (($defaut == $valeur) ? ' selected' : '') ,'>', $libelle, '</option>';
+    }
+    echo '</select>';
+}
+//___________________________________________________________________
+/**
+ * Créé une liste déroulante d'une suite de nombre à partir des options passées en paramètres.
+ *
+ * @param string     $nom       Le nom de la liste déroulante
+ * @param int        $min       La valeur minimale de la liste
+ * @param int        $max       La valeur maximale de la liste
+ * @param int        $pas       La pas d'itération (si positif, énumération croissante, sinon décroissante)
+ * @param int        $default   La valeur qui doit être sélectionnée par défaut.
+ *
+ * @return void
+ */
+function affListeNombre(string $nom, int $min, int $max, int $pas, int $defaut): void {
+    echo '<select name="', $nom, '">';
+    if ($pas > 0) {
+        for ($i=$min; $i <= $max; $i += $pas) {
+            echo '<option value="', $i, '"', (($defaut == $i) ? ' selected' : '') ,'>', $i, '</option>';
+        }
+    }
+    else {
+        for ($i=$max; $i >= $min; $i += $pas) {
+            echo '<option value="', $i, '"', (($defaut == $i) ? ' selected' : '') ,'>', $i, '</option>';
+        }
+    }
+    echo '</select>';
+}
+
+//___________________________________________________________________
+/**
+ * Renvoie un tableau contenant le nom des mois (utile pour certains affichages)
+ *
+ * @return array     Tableau à indices numériques contenant les noms des mois
+ */
+function getTableauMois() : array {
+    return array('Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre');
+}
+
+//___________________________________________________________________
+/**
+ * Affiche une liste déroulante représentant les 12 mois de l'année
+ *
+ * @param string    $nom      Le nom de la liste déroulante (valeur de l'attribut name)
+ * @param int       $defaut   Le mois qui doit être sélectionné par défaut (1 pour janvier)
+ *
+ * @return void
+ */
+function affListeMois(string $nom, int $defaut): void {
+    $mois = getTableauMois();
+    $m = [];
+    foreach ($mois as $k => $v) {
+        $m[$k+1] = mb_strtolower($v, encoding:'UTF-8');
+    }
+    affListe($nom, $m, $defaut);
+}
+
+//___________________________________________________________________
+/**
+ * Contrôle des clés présentes dans les tableaux $_GET ou $_POST - piratage ?
+ *
+ * Soit $x l'ensemble des clés contenues dans $_GET ou $_POST
+ * L'ensemble des clés obligatoires doit être inclus dans $x.
+ * De même $x doit être inclus dans l'ensemble des clés autorisées,
+ * formé par l'union de l'ensemble des clés facultatives et de
+ * l'ensemble des clés obligatoires. Si ces 2 conditions sont
+ * vraies, la fonction renvoie true, sinon, elle renvoie false.
+ * Dit autrement, la fonction renvoie false si une clé obligatoire
+ * est absente ou si une clé non autorisée est présente; elle
+ * renvoie true si "tout va bien"
+ *
+ * @param string    $tabGlobal 'post' ou 'get'
+ * @param array     $clesObligatoires tableau contenant les clés
+ *                  qui doivent obligatoirement être présentes
+ * @param array     $clesFacultatives tableau contenant
+ *                  les clés facultatives
+ *
+ * @return bool     true si les paramètres sont corrects, false sinon
+ */
+function parametresControle(string $tabGlobal, array $clesObligatoires, array $clesFacultatives = []): bool{
+    $x = strtolower($tabGlobal) == 'post' ? $_POST : $_GET;
+
+    $x = array_keys($x);
+    // $clesObligatoires doit être inclus dans $x
+    if (count(array_diff($clesObligatoires, $x)) > 0){
+        return false;
+    }
+    // $x doit être inclus dans
+    // $clesObligatoires Union $clesFacultatives
+    if (count(array_diff($x, array_merge($clesObligatoires, $clesFacultatives))) > 0){
+        return false;
+    }
+    return true;
+}
+
+//___________________________________________________________________
+/**
+ * Renvoie un tableau à indices numériques contenant le jour, le mois et l'année d'une date au format AAAAMMJJ
+ *
+ * @param int       $date   La date au format AAAAMMJJ
+ *
+ * @return array            Tableau contenant le jour, le mois et l'année
+ */
+function getJourMoisAnneeFromDate(int $date) : array{
+    $t = [];
+    $t[] = $date % 100;
+    $t[] = intval(substr($date, 4, 2));
+    $t[] = intdiv($date, 10000);
+    return $t;
+}
+

@@ -544,3 +544,7 @@ main{
     min-height: calc(99vh - 300px - 37px - 49px);
 }
 
+.nomargin{
+    margin: 0;
+}
+

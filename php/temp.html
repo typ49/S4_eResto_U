@@ -1,38 +1,70 @@
-<table>
-    <tr>
-        <td>
-            <p>Votre login :</p>
-        </td>
-    </tr>
-    <tr>
-        <td>
-            <p>Votre mot de passe :</p>
-        </td>
-    </tr>
-    <tr>
-        <td>
-            <p>Répétez le mot de passe :</p>
-        </td>
-    </tr>
-    <tr>
-        <td>
-            <p>Votre nom :</p>
-        </td>
-    </tr>
-    <tr>
-        <td>
-            <p>Votre prenom</p>
-        </td>
-    </tr>
-    <tr>
-        <td>
-            <p>Votre adresse email :</p>
-        </td>
-    </tr>
-    <tr>
-        <td>
-            <p>Votre date de naissance :</p>
-        </td>
-    </tr>
-    
-</table>
+<form method="post">
+    <table>
+        <tr>
+            <td>
+                <label for="login">Votre login :</label>
+            </td>
+            <td>
+                <input type="text" id="login" name="login" placeholder="4 à 8 lettres minuscules ou chiffres">
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label for="pass1">Votre mot de passe :</label>
+            </td>
+            <td>
+                <input type="password" id="pass1" name="pass1" placeholder="4 caractères minimum">
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label for="pass2">Répétez le mot de passe :</label>
+            </td>
+            <td>
+                <input type="password" id="pass2" name="pass2">
+                
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label for="nom">Votre nom :</label>
+            </td>
+            <td>
+                <input type="text" id="nom" name="nom">
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label for="prenom">Votre prenom</label>
+            </td>
+            <td>
+                <input type="text" id="prenom" name="prenom">
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label for email>Votre adresse email :</label>
+            </td>
+            <td>
+                <input type="email" id="email" name="email">
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <label for="naissance">Votre date de naissance :</label>
+            </td>
+            <td>
+                <input type="date" id="naissance" name="naissance">
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <input type="submit" id="btnInscription" name="btnInscription" value="S'inscire">
+            </td>
+            <td>
+                <input type="reset" value="Réinitialiser">
+            </td>
+        </tr>
+        
+    </table>
+</form>

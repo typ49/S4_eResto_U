@@ -548,3 +548,30 @@ main{
     margin: 0;
 }
 
+/* inscription.php */
+
+#inscription_form form {
+    text-align: center;
+  }
+  
+#inscription_form table {
+    margin: 0 auto;
+}
+
+#inscription_form input[type="text"],
+#inscription_form input[type="password"],
+#inscription_form input[type="email"] {
+    width: 220px;
+}
+
+#inscription_form td {
+    padding: 2px 4px;
+}
+
+#inscription_form td:first-child {
+    text-align: right;
+}
+
+#inscription_form #fusion {
+    text-align: center;
+}

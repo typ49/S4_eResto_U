@@ -1,10 +1,10 @@
 <?php
-// Connexion à la base de données
 require_once 'bibli_generale.php';
 require_once 'bibli_erestou.php';
 
-
+// Connexion à la base de données
 ob_start();
+$bd = bdconnect();
 // Variables pour stocker les éventuelles erreurs
 $erreurs = [];
 
@@ -12,74 +12,97 @@ $erreurs = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Récupération des données du formulaire
     $login = trim($_POST['login']);
-    $motDePasse = $_POST['motDePasse'];
-    $motDePasseConfirmation = $_POST['motDePasseConfirmation'];
+    $passe1 = $_POST['passe1'];
+    $passe2 = $_POST['passe2'];
     $nom = trim($_POST['nom']);
     $prenom = trim($_POST['prenom']);
     $email = trim($_POST['email']);
-    $dateNaissance = trim($_POST['dateNaissance']);
+    $naissance = trim($_POST['naissance']);
+
+    // Vérification anti-piratage
+    $pirate = parametresControle('post', ['login','passe1','passe2','nom','prenom','email','naissance']);
+    if ($pirate===0) {
+        header('location: ../index.php');
+    }
 
     // Vérification si les champs du formulaire sont tous remplis
-    if (empty($login) || empty($motDePasse) || empty($motDePasseConfirmation) || empty($nom) || empty($prenom) || empty($email) || empty($dateNaissance)) {
+    if (empty($login) || empty($passe1) || empty($passe2) || empty($nom) || empty($prenom) || empty($email) || empty($naissance)) {
         $erreurs[] = 'Tous les champs du formulaire doivent être remplis.';
-    } else {
-        // Vérification du login
-        if (!preg_match('/^[a-z][a-z0-9]{3,7}$/', $login)) {
-            $erreurs[] = 'Le login doit être constitué de 4 à 8 lettres minuscules sans accents ou chiffres, et doit commencer par une lettre.';
-        } else {
-            // Vérification si le login est déjà utilisé
-            $requete = $pdo->prepare('SELECT COUNT(*) FROM usager WHERE login = ?');
-            $requete->execute([$login]);
-            $count = $requete->fetchColumn();
-            if ($count > 0) {
-                $erreurs[] = 'Le login est déjà utilisé.';
-            }
-        }
-
-        // Vérification du mot de passe
-        if (strlen($motDePasse) < 4 || strlen($motDePasse) > 20 || $motDePasse !== $motDePasseConfirmation) {
-            $erreurs[] = 'Le mot de passe doit être constitué de 4 à 20 caractères et les deux mots de passe saisis doivent être identiques.';
-        }
-
-        // Vérification du nom et prénom
-        if (!preg_match('/^[a-zA-Z\s\'-]+$/', $nom) || !preg_match('/^[a-zA-Z\s\'-]+$/', $prenom)) {
-            $erreurs[] = 'Le nom et prénom ne doivent contenir que des lettres éventuellement séparées par un espace, un tiret ou une simple quote.';
-        }
-
-        // Vérification de l'adresse email
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $erreurs[] = 'L\'adresse email n\'est pas valide.';
-        } else {
-            // Vérification si l'adresse email est déjà utilisée
-            $requete = $pdo->prepare('SELECT COUNT(*) FROM usager WHERE email = ?');
-            $requete->execute([$email]);
-            $count = $requete->fetchColumn();
-            if ($count > 0) {
-                $erreurs[] = 'L\'adresse email est déjà utilisée dans notre base de données.';
-            }
-        }
+    
     }
+    
+    // Vérification si le login est valide
+    if (preg_match('/^[a-z][a-z0-9]{3,7}$/', $login) === 0) {
+        $erreurs[] = 'Le login doit contenir entre 4 et 8 lettres minuscules sans accent, ou chiffres.';
+    
+    }
+    $sql_login = "SELECT COUNT(*) as count FROM usager WHERE usLogin = '$login'"; 
+    $req_login = bdSendRequest($bd, $sql_login);
+    $res_login = mysqli_fetch_assoc($req_login);
+    if ($res_login['count'] != 0) {
+        $erreurs[] = 'le login est deja utilise.';
+    
+    }
+
+    // Vérifier le mot de passe
+    if (strlen($passe1)<4 || strlen($passe1)>20) {
+        $erreurs[] = 'Le mot de passe doit contenir entre 4 et 20 caractères.';
+    }
+    if ($passe1 != $passe2) {
+        $erreurs[] = 'Le mot de passe et le mot de passe de confirmation ne sont pas identique.';
+    }
+
+    // Vérification du nom et du prénom
+    if (strip_tags($nom) != $nom || strip_tags($prenom) != $prenom) {
+        $erreurs[] = 'Le nom et le prénom ne doivent pas contenir de balise HTML';
+    }
+    if (preg_match('/^[a-zA-Z \'-]{1,}$/', $nom)===0 || preg_match('/^[a-zA-Z \'-]{1,}$/', $prenom)===0) {
+        $erreurs[] = 'Le nom et le prénom ne doivent contenir que des lettres éventuellement séparés par un espace, un tiret ou une simple quote.';
+    }
+    if (strlen($nom) > 50) {
+        $erreurs[] = 'Le nom est trop long (>50).';
+    }
+    if (strlen($prenom) > 50) {
+        $erreurs[] = 'Le prenom est trop long (>50).';
+    }
+
+    // Vérification de l'adresse mail
+    if (filter_var($email, FILTER_VALIDATE_EMAIL)===0) {
+        $erreurs[] = "L'adrresse mail est invalide.";
+    }
+    if (strlen($email) > 80) {
+        $erreurs[] = "l'adresse mail est trop longue (>80).";
+    }
+    $sql_mail = "SELECT COUNT(*) as count FROM usager WHERE usMail = '$email'"; 
+    $req_mail = bdSendRequest($bd, $sql_mail);
+    $res_mail = mysqli_fetch_assoc($req_mail);
+    if ($res_mail['count'] != 0) {
+        $erreurs[] = "l'adresse email est deja utilise.";
+    }
+
     // Vérification de la date de naissance
-    if (!checkdate(date('m', strtotime($dateNaissance)), date('d', strtotime($dateNaissance)), date('Y', strtotime($dateNaissance)))) {
-        $erreurs[] = 'La date de naissance n\'est pas valide.';
-    } else {
-        // Vérification si l'utilisateur a au moins 16 ans
-        $dateNaissance = new DateTime($dateNaissance);
-        $aujourdHui = new DateTime();
-        $difference = $aujourdHui->diff($dateNaissance);
-        if ($difference->y < 16) {
-            $erreurs[] = 'Vous devez avoir au moins 16 ans pour vous inscrire.';
-        }
+    $birthday = getJourMoisAnneeFromDate((int)$naissance);
+    if (checkdate($birthday[1], $birthday[0], $birthday[2]) === 0) {
+        $erreurs[] = 'La date de naissance est invalide.';
     }
-}
+    $naissance = new DateTime($naissance);
+    $aujourdhui = new dateTime();
+    $age = $aujourdhui->diff($naissance);
+    if ($age->y < 16) {
+        $erreurs[] = 'Vous devez avoir au moins 16 ans pour vous inscrire. Petit fripons !';
+    }
 
-// Si aucune erreur, on insère les données dans la base de données
-if (empty($erreurs)) {
-    // Insertion des données dans la table usager
-    $requete = $pdo->prepare('INSERT INTO usager (login, mot_de_passe, nom, prenom, email, date_naissance) VALUES (?, ?, ?, ?, ?, ?)');
-    $requete->execute([$login, $motDePasse, $nom, $prenom, $email, $dateNaissance->format('Y-m-d')]);
 
-    // Redirection vers une page de succès
-    header('Location: inscription_reussie.php');
-    exit();
+    // afficher les erreurs éventuelles
+    if (empty($erreurs)) {
+        echo 'Aucune erreur de saisie';
+    }
+    else {
+        $affErr = '<ul>';
+        foreach($erreurs as $err) {
+            $affErr .= '<li>'.$err.'</li>';
+        }
+        $affErr .='</ul>';
+        echo $affErr;
+    }
 }

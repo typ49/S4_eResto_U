@@ -72,12 +72,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (strlen($email) > 80) {
         $erreurs[] = "l'adresse mail est trop longue (>80).";
-    }
-    $sql_mail = "SELECT COUNT(*) as count FROM usager WHERE usMail = '$email'"; 
-    $req_mail = bdSendRequest($bd, $sql_mail);
-    $res_mail = mysqli_fetch_assoc($req_mail);
-    if ($res_mail['count'] != 0) {
-        $erreurs[] = "l'adresse email est deja utilise.";
+    } else {
+        $sql_mail = "SELECT COUNT(*) as count FROM usager WHERE usMail = '$email'"; 
+        $req_mail = bdSendRequest($bd, $sql_mail);
+        $res_mail = mysqli_fetch_assoc($req_mail);
+        if ($res_mail['count'] != 0) {
+            $erreurs[] = "l'adresse email est deja utilise.";
+        }
     }
 
     // Vérification de la date de naissance

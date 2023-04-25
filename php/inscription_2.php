@@ -35,13 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (preg_match('/^[a-z][a-z0-9]{3,7}$/', $login) === 0) {
         $erreurs[] = 'Le login doit contenir entre 4 et 8 lettres minuscules sans accent, ou chiffres.';
     
-    }
-    $sql_login = "SELECT COUNT(*) as count FROM usager WHERE usLogin = '$login'"; 
-    $req_login = bdSendRequest($bd, $sql_login);
-    $res_login = mysqli_fetch_assoc($req_login);
-    if ($res_login['count'] != 0) {
-        $erreurs[] = 'le login est deja utilise.';
-    
+    } else {
+        $sql_login = "SELECT COUNT(*) as count FROM usager WHERE usLogin = '$login'"; 
+        $req_login = bdSendRequest($bd, $sql_login);
+        $res_login = mysqli_fetch_assoc($req_login);
+        if ($res_login['count'] != 0) {
+            $erreurs[] = 'le login est deja utilise.';
+        }    
     }
 
     // Vérifier le mot de passe
@@ -84,12 +84,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $birthday = getJourMoisAnneeFromDate((int)$naissance);
     if (checkdate($birthday[1], $birthday[0], $birthday[2]) === 0) {
         $erreurs[] = 'La date de naissance est invalide.';
-    }
-    $naissance = new DateTime($naissance);
-    $aujourdhui = new dateTime();
-    $age = $aujourdhui->diff($naissance);
-    if ($age->y < 16) {
-        $erreurs[] = 'Vous devez avoir au moins 16 ans pour vous inscrire. Petit fripons !';
+    } else {
+        $naissance = new DateTime($naissance);
+        $aujourdhui = new dateTime();
+        $age = $aujourdhui->diff($naissance);
+        if ($age->y < 16) {
+            $erreurs[] = 'Vous devez avoir au moins 16 ans pour vous inscrire. Petit fripons !';
+        }
     }
 
 

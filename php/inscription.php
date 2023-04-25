@@ -18,8 +18,8 @@ echo
 
 echo
 // '<form method="post" action="inscription_1.php" id="inscription_form">',
-'<form method="post" action="inscription_2.php" id="inscription_form">',
-// '<form method="post" action="inscription_3.php" id="inscription_form">',
+// '<form method="post" action="inscription_2.php" id="inscription_form">',
+'<form method="post" action="inscription_3.php" id="inscription_form">',
     '<table>',
         '<tr>',
             '<td>',

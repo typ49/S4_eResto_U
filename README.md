@@ -14,4 +14,4 @@ TP4 : PHP - traitement de formulaire et session 	-> connexion.php
 
 ###
 
-avancement : Etape 5 - inscription_0.php
+avancement : Etape 6

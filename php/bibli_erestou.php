@@ -3,6 +3,7 @@
  *        Bibliothèque de fonctions spécifiques          *
  *        à l'application eResto-U                       *
  *********************************************************/
+require_once 'bibli_generale.php';
 
 // Force l'affichage des erreurs
 ini_set('display_errors', '1');
@@ -72,12 +73,33 @@ function affEntete(string $titre, string $css = 'eResto.css', string $prefixe = 
  * @return  void
  */
 function affNav(string $prefixe = '..'): void {
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    $authentification = estAuthentifie();
+
     echo '<nav>',
             '<ul>',
                 '<li><a href="', $prefixe, '/index.php"><span>&#x2630;</span> Accueil</a></li>',
-                '<li><a href="', $prefixe, '/php/menu.php"><span>&#x2630;</span> Menus et repas</a></li>',
-                /** changement temporaire pour facilité l'accès a inscription.php */
-                '<li><a href="', $prefixe, '/php/inscription_0.php"><span>&#x2630;</span> Connexion</a></li>',
+                '<li><a href="', $prefixe, '/php/menu.php"><span>&#x2630;</span> Menus et repas</a></li>';
+    if (estAuthentifie()) {
+    // Récupérer le login de l'utilisateur à partir de la base de données
+    $id = $_SESSION['id'];
+    $bd = bdconnect();
+    $sql = "SELECT usLogin FROM usager WHERE usID = $id";
+    $req = bdSendRequest($bd, $sql);
+    $res = mysqli_fetch_assoc($req);
+    $login = $res['usLogin'];
+
+    echo '<li><a href="', $prefixe, '/php/deconnexion.php">Déconnexion [', $login, ']</a></li>';
+    } else {
+        // Si l'utilisateur n'est pas authentifié, afficher le lien de connexion
+        // echo '<li><a href="', $prefixe, '/php/connexion.php">Connexion</a></li>';
+        echo '<li><a href="', $prefixe, '/php/inscription.php">Connexion</a></li>';
+    }
+     
+    echo
             '</ul>',
         '</nav>',
         '<main>';

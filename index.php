@@ -6,6 +6,7 @@ require_once('./php/bibli_generale.php');
 
 // bufferisation des sorties
 ob_start();
+session_start();
 
 // génération de l'entête 
 affEntete('Accueil', prefixe:'.');

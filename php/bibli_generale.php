@@ -289,3 +289,43 @@ function getJourMoisAnneeFromDate(int $date) : array{
     return $t;
 }
 
+
+/**
+ * Session exit
+ * 
+ * effacer toutes les variables de session en affectant un tableau vide dans $_SESSION;
+ * supprimer le cookie de session : cf. chapitre "Web et PHP" du tutoriel PHP (le lien ne fonctionne que si vous êtes sur le réseau du département Informatique);
+ * détruire la session existante en appelant la fonction session_destroy().
+ * @param mixed $redirectUrl
+ * @return never
+ */
+function sessionExit($redirectUrl) {
+    // Effacer toutes les variables de session en affectant un tableau vide dans $_SESSION
+    $_SESSION = [];
+
+    // Supprimer le cookie de session
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params['path'], $params['domain'],
+            $params['secure'], $params['httponly']
+        );
+    }
+
+    // Détruire la session existante en appelant la fonction session_destroy()
+    session_destroy();
+
+    // Rediriger l'utilisateur vers la page transmise en paramètre
+    header('Location: ' . $redirectUrl);
+    exit();
+}
+
+
+/**
+ * estAuthentifie
+ * Renvoie true si l'utilisateur est authentifié, false sinon.
+ * @return bool
+ */
+function estAuthentifie() {
+    return isset($_SESSION['id']);
+}

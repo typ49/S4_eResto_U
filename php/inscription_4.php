@@ -113,7 +113,7 @@ function traitementInscriptionL($bd) {
     return $erreurs;
 }
 
-function affFormInscription($errors) {
+function affFormInscription($errors, $data) {
 
     echo
     '<h3>Formulaire d\'inscription</h3>',
@@ -144,7 +144,7 @@ function affFormInscription($errors) {
                     '<label for="login">Votre login : </label>',
                 '</td>',
                 '<td>',
-                    '<input type="text" id="login" name="login" placeholder="4 à 8 lettres minuscules ou chiffres">',
+                    '<input type="text" id="login" name="login" placeholder="4 à 8 lettres minuscules ou chiffres" value="'.htmlspecialchars($data['login'] ?? '').'">',
                 '</td>',
             '</tr>',
             '<tr>',
@@ -169,7 +169,7 @@ function affFormInscription($errors) {
                     '<label for="nom">Votre nom : </label>',
                 '</td>',
                 '<td>',
-                    '<input type="text" id="nom" name="nom">',
+                    '<input type="text" id="nom" name="nom" value="'.htmlspecialchars($data['nom'] ?? '').'">',
                 '</td>',
             '</tr>',
             '<tr>',
@@ -177,7 +177,7 @@ function affFormInscription($errors) {
                     '<label for="prenom">Votre prenom : </label>',
                 '</td>',
                 '<td>',
-                    '<input type="text" id="prenom" name="prenom">',
+                    '<input type="text" id="prenom" name="prenom" value="'.htmlspecialchars($data['prenom'] ?? '').'">',
                 '</td>',
             '</tr>',
             '<tr>',
@@ -185,7 +185,7 @@ function affFormInscription($errors) {
                     '<label for="email">Votre adresse email : </label>',
                 '</td>',
                 '<td>',
-                    '<input type="email" id="email" name="email">',
+                    '<input type="email" id="email" name="email" value="'.htmlspecialchars($data['email'] ?? '').'">',
                 '</td>',
             '</tr>',
             '<tr>',
@@ -193,7 +193,7 @@ function affFormInscription($errors) {
                     '<label for="naissance">Votre date de naissance : </label>',
                 '</td>',
                 '<td>',
-                    '<input type="date" id="naissance" name="naissance">',
+                    '<input type="date" id="naissance" name="naissance" value="'.htmlspecialchars($data['naissance'] ?? '').'">',
                 '</td>',
             '</tr>',
             '<tr>',

@@ -6,6 +6,7 @@ require_once 'bibli_generale.php';
 
 // bufferisation des sorties
 ob_start();
+session_start();
 
 // affichage de l'entête
 affEntete('Menus et repas');

@@ -213,7 +213,7 @@ affEntete('Inscription');
 affNav();
 
 
-affFormInscription($erreurs);
+affFormInscription($erreurs, $_POST);
 
 
 affPiedDePage();

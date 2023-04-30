@@ -95,8 +95,8 @@ function affNav(string $prefixe = '..'): void {
     echo '<li><a href="', $prefixe, '/php/deconnexion.php">Déconnexion [', $login, ']</a></li>';
     } else {
         // Si l'utilisateur n'est pas authentifié, afficher le lien de connexion
-        // echo '<li><a href="', $prefixe, '/php/connexion.php">Connexion</a></li>';
-        echo '<li><a href="', $prefixe, '/php/inscription.php">Connexion</a></li>';
+        // echo '<li><a href="', $prefixe, '/php/connexion.php">Connexion</a></li>';  // a changé quand connexion.php existeras
+        echo '<li><a href="', $prefixe, '/php/inscription.php">Connexion</a></li>'; // pour le TP4, accès a inscription.php
     }
      
     echo

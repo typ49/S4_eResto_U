@@ -6,10 +6,17 @@ require_once 'bibli_generale.php';
 
 // bufferisation des sorties
 ob_start();
+$bd=bdconnect();
 
+// erreurs détectées lors de la soumission
+$erreurs = [];
 
-function traitementInscriptionL() {
-    $bd = bdconnect();
+// si soumission du formulaire
+if (isset($_POST['btnInscription'])){
+    $erreurs = traitementInscriptionL($bd);
+}
+
+function traitementInscriptionL($bd) {
     // Variables pour stocker les éventuelles erreurs
     $erreurs = [];
 
@@ -99,30 +106,37 @@ function traitementInscriptionL() {
             }
         }
     }
+    if (empty($erreurs)) {
+        header('Location: ./protegee.php');
+        exit();
+    }
     return $erreurs;
 }
 
-function affFormInscription(Array $err) {
+function affFormInscription($errors) {
+
     echo
     '<h3>Formulaire d\'inscription</h3>',
     '<p>Pour vous inscrire, merci de fournir les informations suivantes.</p>';
-    if (empty($err)) {
-        echo '<form method="post" action="protegee.php" id="inscription_form">';
-    }
-    else {
-        $affErr = '<ul>';
-        foreach($err as $e) {
-            $affErr .= '<li>'.$e.'</li>';
+
+    // affichage des erreurs
+    if (count($errors) > 0){
+        echo '<div id="errors">',
+        '<p>Les erreurs suivantes on été révélées lors de votre inscription :</p>',
+        '<ul>';
+        foreach($errors as $err){
+            echo '<li> ', $err,'</li>';
         }
-        $affErr .='</ul>';
-        echo $affErr;
-        echo '<form method="post" action="',$_SERVER['PHP_SELF'],'" id="inscription_form">';
+        echo '</ul>',
+        '</div>';
     }
     // Le formulaire de connexion
     echo
     // '<form method="post" action="inscription_1.php" id="inscription_form">',
     // '<form method="post" action="inscription_2.php" id="inscription_form">',
     // '<form method="post" action="inscription_3.php" id="inscription_form">',
+    // '<form method="post" action="protegee.php" id="inscription_form">',
+    '<form method="post" action="',$_SERVER['PHP_SELF'],'" id="inscription_form">',
     
         '<table>',
             '<tr>',
@@ -198,13 +212,6 @@ affEntete('Inscription');
 // affichage de la barre de navigation
 affNav();
 
-// erreurs détectées lors de la soumission
-$erreurs = [];
-
-// si soumission du formulaire
-if (isset($_POST['btnEnvoi'])){
-    $erreurs = traitementInscriptionL();
-}
 
 affFormInscription($erreurs);
 

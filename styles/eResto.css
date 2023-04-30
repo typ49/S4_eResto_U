@@ -575,3 +575,28 @@ main{
 #inscription_form #fusion {
     text-align: center;
 }
+
+/*message erreurs de connexion :*/
+#errors {
+    width : 80%;
+    border : solid 2px red;
+    margin : 0 auto 0 auto;
+    text-align: left;
+    color: red;
+    font-size: 14px;
+}
+
+#errors li {
+    list-style-type: none;
+    padding-left: 2em;
+    position: relative;
+  }
+  
+  #errors li::before {
+    content: "\1F61E"; /* Le caractère Unicode pour le symbole souhaité (par exemple, un point) */
+    position: absolute;
+    left: 0;
+    padding-right: 3px;
+    font-size: 1.2em; /* Vous pouvez ajuster la taille du symbole ici */
+    color: red; /* Vous pouvez ajuster la couleur du symbole ici */
+  }

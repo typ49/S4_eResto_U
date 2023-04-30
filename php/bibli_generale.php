@@ -329,3 +329,40 @@ function sessionExit($redirectUrl) {
 function estAuthentifie() {
     return isset($_SESSION['id']);
 }
+
+
+function affLigneInput($label, $type, $name, $value = '', $required = true) {
+    echo '<tr>',
+            '<td>',
+                '<label for="', $name, '">', $label, '</label>',
+            '</td>',
+            '<td>',
+                '<input type="', $type, '" name="', $name, '" id="', $name, '" value="', $value, '"', ($required ? ' required' : ''), '>',
+            '</td>',
+        '</tr>';
+}
+
+
+function genForm($fields) {
+    echo '<form method="POST" action="">',
+            '<table>';
+    
+    foreach ($fields as $field) {
+        $label = $field['label'];
+        $type = $field['type'];
+        $name = $field['name'];
+        $value = isset($field['value']) ? $field['value'] : '';
+        $required = isset($field['required']) ? $field['required'] : true;
+
+        affLigneInput($label, $type, $name, $value, $required);
+    }
+
+    echo        '<tr>',
+                    '<td></td>',
+                    '<td>',
+                        '<input type="submit" value="Valider">',
+                    '</td>',
+                '</tr>',
+            '</table>',
+        '</form>';
+}

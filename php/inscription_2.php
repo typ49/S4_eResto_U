@@ -1,110 +1,136 @@
 <?php
-require_once 'bibli_generale.php';
-require_once 'bibli_erestou.php';
 
-// Connexion à la base de données
+// chargement des bibliothèques de fonctions
+require_once('bibli_erestou.php');
+require_once('bibli_generale.php');
+
+// bufferisation des sorties
 ob_start();
-$bd = bdconnect();
-// Variables pour stocker les éventuelles erreurs
+
+// génération de la page
+affEntete('Vérification des données reçues');
+affNav();
+
+/* Toutes les erreurs détectées qui nécessitent une modification du code HTML sont considérées comme des tentatives de piratage
+et donc entraînent l'appel de la fonction sessionExit() */
+
+if( !parametresControle('post', ['login', 'nom', 'prenom', 'naissance',
+                                    'passe1', 'passe2', 'email', 'btnInscription'])) {
+    header('Location: ../index.php');
+    exit;
+}
+
 $erreurs = [];
 
-// Vérification si le formulaire a été soumis
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Récupération des données du formulaire
-    $login = trim($_POST['login']);
-    $passe1 = $_POST['passe1'];
-    $passe2 = $_POST['passe2'];
-    $nom = trim($_POST['nom']);
-    $prenom = trim($_POST['prenom']);
-    $email = trim($_POST['email']);
-    $naissance = trim($_POST['naissance']);
+// vérification du login
+$login = $_POST['login'] = trim($_POST['login']);
 
-    // Vérification anti-piratage
-    $pirate = parametresControle('post', ['login','passe1','passe2','nom','prenom','email','naissance']);
-    if ($pirate===0) {
-        header('location: ../index.php');
-    }
+if (!preg_match('/^[a-z][a-z0-9]{' . (LMIN_LOGIN - 1) . ',' .(LMAX_LOGIN - 1). '}$/u',$login)) {
+    $erreurs[] = 'Le login doit contenir entre '. LMIN_LOGIN .' et '. LMAX_LOGIN .
+                ' lettres minuscules sans accents, ou chiffres, et commencer par une lettre.';
+}
 
-    // Vérification si les champs du formulaire sont tous remplis
-    if (empty($login) || empty($passe1) || empty($passe2) || empty($nom) || empty($prenom) || empty($email) || empty($naissance)) {
-        $erreurs[] = 'Tous les champs du formulaire doivent être remplis.';
-    
-    }
-    
-    // Vérification si le login est valide
-    if (preg_match('/^[a-z][a-z0-9]{3,7}$/', $login) === 0) {
-        $erreurs[] = 'Le login doit contenir entre 4 et 8 lettres minuscules sans accent, ou chiffres.';
-    
-    } else {
-        $sql_login = "SELECT COUNT(*) as count FROM usager WHERE usLogin = '$login'"; 
-        $req_login = bdSendRequest($bd, $sql_login);
-        $res_login = mysqli_fetch_assoc($req_login);
-        if ($res_login['count'] != 0) {
-            $erreurs[] = 'le login est deja utilise.';
-        }    
-    }
+// vérification des mots de passe
+if ($_POST['passe1'] !== $_POST['passe2']) {
+    $erreurs[] = 'Les mots de passe doivent être identiques.';
+}
+$nb = mb_strlen($_POST['passe1'], encoding:'UTF-8');
+if ($nb < LMIN_PASSWORD || $nb > LMAX_PASSWORD){
+    $erreurs[] = 'Le mot de passe doit être constitué de '. LMIN_PASSWORD . ' à ' . LMAX_PASSWORD . ' caractères.';
+}
 
-    // Vérifier le mot de passe
-    if (strlen($passe1)<4 || strlen($passe1)>20) {
-        $erreurs[] = 'Le mot de passe doit contenir entre 4 et 20 caractères.';
-    }
-    if ($passe1 != $passe2) {
-        $erreurs[] = 'Le mot de passe et le mot de passe de confirmation ne sont pas identique.';
-    }
+// vérification des noms et prénoms
+$expRegNomPrenom = '/^[[:alpha:]]([\' -]?[[:alpha:]]+)*$/u';
+$nom = $_POST['nom'] = trim($_POST['nom']);
+$prenom = $_POST['prenom'] = trim($_POST['prenom']);
+verifierTexte($nom, 'Le nom', $erreurs, LMAX_NOM, $expRegNomPrenom);
+verifierTexte($prenom, 'Le prénom', $erreurs, LMAX_PRENOM, $expRegNomPrenom);
 
-    // Vérification du nom et du prénom
-    if (strip_tags($nom) != $nom || strip_tags($prenom) != $prenom) {
-        $erreurs[] = 'Le nom et le prénom ne doivent pas contenir de balise HTML';
-    }
-    if (preg_match('/^[a-zA-Z \'-]{1,}$/', $nom)===0 || preg_match('/^[a-zA-Z \'-]{1,}$/', $prenom)===0) {
-        $erreurs[] = 'Le nom et le prénom ne doivent contenir que des lettres éventuellement séparés par un espace, un tiret ou une simple quote.';
-    }
-    if (strlen($nom) > 50) {
-        $erreurs[] = 'Le nom est trop long (>50).';
-    }
-    if (strlen($prenom) > 50) {
-        $erreurs[] = 'Le prenom est trop long (>50).';
-    }
+// vérification du format de l'adresse email
+$email = $_POST['email'] = trim($_POST['email']);
+verifierTexte($email, 'L\'adresse email', $erreurs, LMAX_EMAIL);
 
-    // Vérification de l'adresse mail
-    if (filter_var($email, FILTER_VALIDATE_EMAIL)===0) {
-        $erreurs[] = "L'adrresse mail est invalide.";
+// la validation faite par le navigateur en utilisant le type email pour l'élément HTML input
+// est moins forte que celle faite ci-dessous avec la fonction filter_var()
+// Exemple : 'l@i' passe la validation faite par le navigateur et ne passe pas
+// celle faite ci-dessous
+if(! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $erreurs[] = 'L\'adresse email n\'est pas valide.';
+}
+
+// vérification de la date de naissance
+if (empty($_POST['naissance'])){
+    $erreurs[] = 'La date de naissance doit être renseignée.';
+}
+else{
+    if(! preg_match('/^\d{4}(-\d{2}){2}$/u', $_POST['naissance'])){ //vieux navigateur qui ne supporte pas le type date ?
+        $erreurs[] = 'la date de naissance doit être au format "AAAA-MM-JJ".';
     }
-    if (strlen($email) > 80) {
-        $erreurs[] = "l'adresse mail est trop longue (>80).";
-    } else {
-        $sql_mail = "SELECT COUNT(*) as count FROM usager WHERE usMail = '$email'"; 
-        $req_mail = bdSendRequest($bd, $sql_mail);
-        $res_mail = mysqli_fetch_assoc($req_mail);
-        if ($res_mail['count'] != 0) {
-            $erreurs[] = "l'adresse email est deja utilise.";
+    else{
+        list($annee, $mois, $jour) = explode('-', $_POST['naissance']);
+        if (!checkdate($mois, $jour, $annee)) {
+            $erreurs[] = 'La date de naissance n\'est pas valide.';
         }
-    }
-
-    // Vérification de la date de naissance
-    $birthday = getJourMoisAnneeFromDate((int)$naissance);
-    if (checkdate($birthday[1], $birthday[0], $birthday[2]) === 0) {
-        $erreurs[] = 'La date de naissance est invalide.';
-    } else {
-        $naissance = new DateTime($naissance);
-        $aujourdhui = new dateTime();
-        $age = $aujourdhui->diff($naissance);
-        if ($age->y < 16) {
-            $erreurs[] = 'Vous devez avoir au moins 16 ans pour vous inscrire. Petit fripons !';
+        else if (mktime(0,0,0,$mois,$jour,$annee + AGE_MINIMUM) > time()) {
+            $erreurs[] = 'Vous devez avoir au moins '. AGE_MINIMUM. ' ans pour vous inscrire.';
         }
-    }
-
-
-    // afficher les erreurs éventuelles
-    if (empty($erreurs)) {
-        echo 'Aucune erreur de saisie';
-    }
-    else {
-        $affErr = '<ul>';
-        foreach($erreurs as $err) {
-            $affErr .= '<li>'.$err.'</li>';
-        }
-        $affErr .='</ul>';
-        echo $affErr;
     }
 }
+
+// si erreurs --> affichage et fin du script
+if (count($erreurs) > 0) {
+    echo '<div>Les erreurs suivantes ont été relevées lors de votre inscription :<ul style="list-style-type: disc">';
+    foreach($erreurs as $e){
+        echo '<li>', $e, '</li>';
+    }
+    echo '</ul></div>';
+    affPiedDePage();
+    exit;   //=> fin du script
+}
+
+// on vérifie si le login et l'adresse email ne sont pas encore utilisés que si tous les autres champs
+// sont valides car ces 2 dernières vérifications nécessitent une connexion au serveur de base de données
+// consommatrice de ressources système
+
+// ouverture de la connexion à la base
+$bd = bdConnect();
+
+// protection des entrées
+$login2 = mysqli_real_escape_string($bd, $login); // fait par principe, mais inutile ici car on a déjà vérifié que le login
+                                            // ne contenait que des caractères alphanumériques
+$email2 = mysqli_real_escape_string($bd, $email);
+$sql = "SELECT usLogin, usMail FROM usager WHERE usLogin = '{$login2}' OR usMail = '{$email2}'";
+$res = bdSendRequest($bd, $sql);
+
+while($tab = mysqli_fetch_assoc($res)) {
+    if ($tab['usLogin'] == $login){
+        $erreurs[] = 'Le login existe déjà.';
+    }
+    if ($tab['usMail'] == $email){
+        $erreurs[] = 'L\'adresse email existe déjà.';
+    }
+}
+// Libération de la mémoire associée au résultat de la requête
+mysqli_free_result($res);
+// fermeture de la connexion à la base de données
+mysqli_close($bd);
+
+
+// si erreurs --> affichage et fin du script
+if (count($erreurs) > 0) {
+    echo '<div>Les erreurs suivantes ont été relevées lors de votre inscription :<ul style="list-style-type: disc">';
+    foreach($erreurs as $e){
+        echo '<li>', $e, '</li>';
+    }
+    echo '</ul></div>';
+    affPiedDePage();
+    exit;   //=> fin du script
+}
+
+// pas d'erreur détectée
+echo '<p>Aucune erreur de saisie.</p>';
+affPiedDePage();
+
+
+    
+

@@ -1,48 +1,58 @@
 <?php
-// Inclure les fonctions nécessaires
+
 require_once 'bibli_generale.php';
 require_once 'bibli_erestou.php';
 
-// Démarrer la session
+// bufferisation des sorties
+ob_start();
+
+// démarrage ou reprise de la session
 session_start();
 
-// Vérifier si l'utilisateur est authentifié
-if (!estAuthentifie()) {
-    // Si l'utilisateur n'est pas authentifié, redirigez-le vers la page de connexion
-    header('Location: connexion.php');
-    exit();
+
+// si l'utilisateur n'est pas authentifié, on le redirige sur la page index.php
+if (! estAuthentifie()){
+    header('Location: ../index.php');
+    exit;
 }
 
-// Récupérer l'ID de l'utilisateur authentifié
-$userId = $_SESSION['id'];
-
-// Se connecter à la base de données
-$bd = bdconnect();
-
-// Récupérer les informations de l'utilisateur authentifié à partir de la table usager
-$sql = "SELECT * FROM usager WHERE usID = $userId";
-$result = bdSendRequest($bd, $sql);
-$userData = mysqli_fetch_assoc($result);
-
-// Fermer la connexion à la base de données
-mysqli_close($bd);
-
-// Afficher les informations de l'utilisateur authentifié
-
-affEntete('Page protégée');
+// affichage de l'entête
+affEntete('Accès restreint');
+// affichage de la barre de navigation
 affNav();
 
-echo '<h2>Informations de l\'utilisateur authentifié</h2>',
 
-'<p>ID de l\'utilisateur : ' . $userId . '</p>',
-'<p>Identifiant de session (SID) : ' . session_id() . '</p>',
+$bd = bdConnect();
 
-'<h3>Informations de l\'utilisateur dans la table "usager"</h3>',
-'<table border="1">',
-'<tr><th>Champ</th><th>Valeur</th></tr>';
-foreach ($userData as $key => $value) {
-    echo '<tr><td>' . $key . '</td><td>' . $value . '</td></tr>';
-}
-echo '</table>';
+$sql = "SELECT *
+        FROM usager
+        WHERE usID = {$_SESSION['usID']}";
 
+$res = bdSendRequest($bd, $sql);
+
+$T = mysqli_fetch_assoc($res);
+
+mysqli_free_result($res);
+mysqli_close($bd);
+
+$T = htmlProtegerSorties($T);
+
+echo '<section>',
+        '<h3>Accès restreint aux utilisateurs authentifiés</h3>';
+
+echo    '<ul style="list-style-type: disc">',
+            '<li><strong>ID : ', $_SESSION['usID'], '</strong></li>',
+            '<li>SID : ', session_id(), '</li>';
+foreach($T as $cle => $val){
+    echo    '<li>', $cle, ' : ', $val, '</li>';
+} 
+echo    '</ul>',
+    '</section>';
+
+// affichage du pied de page
 affPiedDePage();
+
+// facultatif car fait automatiquement par PHP
+ob_end_flush();
+
+

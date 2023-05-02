@@ -548,55 +548,49 @@ main{
     margin: 0;
 }
 
-/* inscription.php */
-
-#inscription_form form {
-    text-align: center;
-  }
-  
-#inscription_form table {
-    margin: 0 auto;
+/** Formulaire **/
+form {
+    margin: 20px 0;
 }
 
-#inscription_form input[type="text"],
-#inscription_form input[type="password"],
-#inscription_form input[type="email"] {
-    width: 220px;
+form table {
+    margin: 10px auto;
 }
 
-#inscription_form td {
+form table td {
     padding: 2px 4px;
 }
 
-#inscription_form td:first-child {
+form table td:first-child:not(:only-child) {
     text-align: right;
 }
 
-#inscription_form #fusion {
+form table td:only-child{
     text-align: center;
 }
 
-/*message erreurs de connexion :*/
-#errors {
-    width : 80%;
-    border : solid 2px red;
-    margin : 0 auto 0 auto;
-    text-align: left;
-    color: red;
-    font-size: 14px;
+
+form table tr:last-of-type > td {
+    padding-top: 20px;
 }
 
-#errors li {
-    list-style-type: none;
-    padding-left: 2em;
-    position: relative;
-  }
-  
-  #errors li::before {
-    content: "\1F61E"; /* Le caractère Unicode pour le symbole souhaité (par exemple, un point) */
-    position: absolute;
-    left: 0;
-    padding-right: 3px;
-    font-size: 1.2em; /* Vous pouvez ajuster la taille du symbole ici */
-    color: red; /* Vous pouvez ajuster la couleur du symbole ici */
-  }
+form input[type=text], form input[type=email], form input[type=password] {
+    width: 220px;
+}
+
+.error {
+    color: red;
+    font-size: 14px;
+    font-weight: bold;
+    width: 85%;
+    margin: 10px auto;
+    border: solid 2px red;
+    padding: 5px;
+    line-height: 1.5;
+}
+
+.error ul {
+    list-style-type: "\1F61E";
+}
+
+

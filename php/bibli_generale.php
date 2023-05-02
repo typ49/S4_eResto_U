@@ -289,80 +289,60 @@ function getJourMoisAnneeFromDate(int $date) : array{
     return $t;
 }
 
-
+//_______________________________________________________________
 /**
- * Session exit
- * 
- * effacer toutes les variables de session en affectant un tableau vide dans $_SESSION;
- * supprimer le cookie de session : cf. chapitre "Web et PHP" du tutoriel PHP (le lien ne fonctionne que si vous êtes sur le réseau du département Informatique);
- * détruire la session existante en appelant la fonction session_destroy().
- * @param mixed $redirectUrl
- * @return never
+ *  Protection des sorties (code HTML généré à destination du client).
+ *
+ *  Fonction à appeler pour toutes les chaines provenant de :
+ *      - de saisies de l'utilisateur (formulaires)
+ *      - de la bdD
+ *  Permet de se protéger contre les attaques XSS (Cross site scripting)
+ *  Convertit tous les caractères éligibles en entités HTML, notamment :
+ *      - les caractères ayant une signification spéciales en HTML (<, >, ", ', ...)
+ *      - les caractères accentués
+ *
+ *  Si on lui transmet un tableau, la fonction renvoie un tableau où toutes les chaines
+ *  qu'il contient sont protégées, les autres données du tableau ne sont pas modifiées.
+ *
+ *  @param  array|string  $content   la chaine à protéger ou un tableau contenant des chaines à protéger
+ *  @return array|string             la chaîne protégée ou le tableau
  */
-function sessionExit($redirectUrl) {
-    // Effacer toutes les variables de session en affectant un tableau vide dans $_SESSION
-    $_SESSION = [];
-
-    // Supprimer le cookie de session
-    if (ini_get('session.use_cookies')) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $params['path'], $params['domain'],
-            $params['secure'], $params['httponly']
-        );
+function htmlProtegerSorties(array|string $content): array|string {
+    if (is_array($content)) {
+        foreach ($content as &$value) {
+            if (is_array($value) || is_string($value)){
+                $value = htmlProtegerSorties($value);
+            }
+        }
+        unset ($value); // à ne pas oublier (de façon générale)
+        return $content;
     }
-
-    // Détruire la session existante en appelant la fonction session_destroy()
-    session_destroy();
-
-    // Rediriger l'utilisateur vers la page transmise en paramètre
-    header('Location: ' . $redirectUrl);
-    exit();
+    if (is_string($content)){
+        return htmlentities($content, ENT_QUOTES, encoding:'UTF-8');
+    }
+    return $content;
 }
 
-
+//___________________________________________________________________
 /**
- * estAuthentifie
- * Renvoie true si l'utilisateur est authentifié, false sinon.
- * @return bool
+ * Affiche une ligne d'un tableau permettant la saisie d'un champ input de type 'text', 'password', 'date' ou 'email'
+ *
+ * La ligne est constituée de 2 cellules :
+ * - la 1ère cellule contient un label permettant un "contrôle étiqueté" de l'input
+ * - la 2ème cellule contient l'input
+ *
+ * @param string    $libelle        Le label associé à l'input
+ * @param array     $attributs      Un tableau associatif donnant les attributs de l'input sous la forme nom => valeur
+ * @param string    $prefixId      Le préfixe utilisé pour l'id de l'input, ce qui donne un id égal à {$prefixId}{$attributs['name']}
  */
-function estAuthentifie() {
-    return isset($_SESSION['id']);
-}
+function affLigneInput(string $libelle, array $attributs = array(), string $prefixId = 'text'): void{
+    echo    '<tr>',
+                '<td><label for="', $prefixId, $attributs['name'], '">', $libelle, '</label></td>',
+                '<td><input id="', $prefixId, $attributs['name'], '"';
 
-
-function affLigneInput($label, $type, $name, $value = '', $required = true) {
-    echo '<tr>',
-            '<td>',
-                '<label for="', $name, '">', $label, '</label>',
-            '</td>',
-            '<td>',
-                '<input type="', $type, '" name="', $name, '" id="', $name, '" value="', $value, '"', ($required ? ' required' : ''), '>',
-            '</td>',
-        '</tr>';
-}
-
-
-function genForm($fields) {
-    echo '<form method="POST" action="">',
-            '<table>';
-    
-    foreach ($fields as $field) {
-        $label = $field['label'];
-        $type = $field['type'];
-        $name = $field['name'];
-        $value = isset($field['value']) ? $field['value'] : '';
-        $required = isset($field['required']) ? $field['required'] : true;
-
-        affLigneInput($label, $type, $name, $value, $required);
+    foreach ($attributs as $cle => $value){
+        echo ' ', $cle, ($value !== null ? "='{$value}'" : '');
     }
-
-    echo        '<tr>',
-                    '<td></td>',
-                    '<td>',
-                        '<input type="submit" value="Valider">',
-                    '</td>',
-                '</tr>',
-            '</table>',
-        '</form>';
+    echo '></td></tr>';
 }
+

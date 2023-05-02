@@ -1,249 +1,269 @@
 <?php
-
-// Ajout de session_start() pour pouvoir utiliser les variables de session
-session_start();
+/* ------------------------------------------------------------------------------
+    Architecture de la page
+    - étape 1 : vérifications diverses et traitement des soumissions
+    - étape 2 : génération du code HTML de la page
+------------------------------------------------------------------------------*/
 
 // chargement des bibliothèques de fonctions
-require_once 'bibli_erestou.php';
-require_once 'bibli_generale.php';
-
-// Si l'utilisateur est déjà authentifié, on le redirige vers la page protégée
-if (isset($_SESSION['id]'])) {
-    header('Location: ./protegee.php');
-    exit();
-}
+require_once('bibli_erestou.php');
+require_once('bibli_generale.php');
 
 // bufferisation des sorties
 ob_start();
-$bd=bdconnect();
 
-// erreurs détectées lors de la soumission
-$erreurs = [];
+// démarrage ou reprise de la session
+session_start();
 
-// si soumission du formulaire
-if (isset($_POST['btnInscription'])){
-    $erreurs = traitementInscriptionL($bd);
+/*------------------------- Etape 1 --------------------------------------------
+- vérifications diverses et traitement des soumissions
+------------------------------------------------------------------------------*/
+
+// si l'utilisateur est déjà authentifié
+if (estAuthentifie()){
+    header ('Location: menu.php');
+    exit();
 }
 
-function traitementInscriptionL($bd) {
-    // Variables pour stocker les éventuelles erreurs
-    $erreurs = [];
-
-    // Vérification si le formulaire a été soumis
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        // Récupération des données du formulaire
-        $login = trim($_POST['login']);
-        $passe1 = $_POST['passe1'];
-        $passe2 = $_POST['passe2'];
-        $nom = trim($_POST['nom']);
-        $prenom = trim($_POST['prenom']);
-        $email = trim($_POST['email']);
-        $naissance = trim($_POST['naissance']);
-
-        // Vérification anti-piratage
-        $pirate = parametresControle('post', ['login','passe1','passe2','nom','prenom','email','naissance']);
-        if ($pirate===0) {
-            sessionExit('../index.php');
-        }
-
-        // Vérification si les champs du formulaire sont tous remplis
-        if (empty($login) || empty($passe1) || empty($passe2) || empty($nom) || empty($prenom) || empty($email) || empty($naissance)) {
-            $erreurs[] = 'Tous les champs du formulaire doivent être remplis.';
-        
-        }
-        
-        // Vérification si le login est valide
-        if (preg_match('/^[a-z][a-z0-9]{3,7}$/', $login) === 0) {
-            $erreurs[] = 'Le login doit contenir entre 4 et 8 lettres minuscules sans accent, ou chiffres.';
-        
-        } else {
-            $sql_login = "SELECT COUNT(*) as count FROM usager WHERE usLogin = '$login'"; 
-            $req_login = bdSendRequest($bd, $sql_login);
-            $res_login = mysqli_fetch_assoc($req_login);
-            if ($res_login['count'] != 0) {
-                $erreurs[] = 'le login est deja utilise.';
-            }    
-        }
-
-        // Vérifier le mot de passe
-        if (strlen($passe1)<4 || strlen($passe1)>20) {
-            $erreurs[] = 'Le mot de passe doit contenir entre 4 et 20 caractères.';
-        }
-        if ($passe1 != $passe2) {
-            $erreurs[] = 'Le mot de passe et le mot de passe de confirmation ne sont pas identique.';
-        }
-
-        // Vérification du nom et du prénom
-        if (strip_tags($nom) != $nom || strip_tags($prenom) != $prenom) {
-            $erreurs[] = 'Le nom et le prénom ne doivent pas contenir de balise HTML';
-        }
-        if (preg_match('/^[a-zA-Z \'-]{1,}$/', $nom)===0 || preg_match('/^[a-zA-Z \'-]{1,}$/', $prenom)===0) {
-            $erreurs[] = 'Le nom et le prénom ne doivent contenir que des lettres éventuellement séparés par un espace, un tiret ou une simple quote.';
-        }
-        if (strlen($nom) > 50) {
-            $erreurs[] = 'Le nom est trop long (>50).';
-        }
-        if (strlen($prenom) > 50) {
-            $erreurs[] = 'Le prenom est trop long (>50).';
-        }
-
-        // Vérification de l'adresse mail
-        if (filter_var($email, FILTER_VALIDATE_EMAIL)===0) {
-            $erreurs[] = "L'adrresse mail est invalide.";
-        }
-        if (strlen($email) > 80) {
-            $erreurs[] = "l'adresse mail est trop longue (>80).";
-        } else {
-            $sql_mail = "SELECT COUNT(*) as count FROM usager WHERE usMail = '$email'"; 
-            $req_mail = bdSendRequest($bd, $sql_mail);
-            $res_mail = mysqli_fetch_assoc($req_mail);
-            if ($res_mail['count'] != 0) {
-                $erreurs[] = "l'adresse email est deja utilise.";
-            }
-        }
-
-        // Vérification de la date de naissance    
-        $birthday = getJourMoisAnneeFromDate((int)$naissance);
-        if (checkdate($birthday[1], $birthday[0], $birthday[2]) === 0) {
-            $erreurs[] = 'La date de naissance est invalide.';
-        } else {
-            $dateNaissance = new DateTime($naissance);
-            $aujourdhui = new dateTime();
-            $age = $aujourdhui->diff($dateNaissance);
-            if ($age->y < 16) {
-                $erreurs[] = 'Vous devez avoir au moins 16 ans pour vous inscrire. Petit fripons !';
-            }
-            else {
-                $naissanceAAAAMMDD = $dateNaissance->format('Ymd');
-            }
-        }
-        
-    }
-    if (empty($erreurs)) {
-        // Insérer l'utilisateur dans la base de données
-        $passe_hash = password_hash($passe1, PASSWORD_DEFAULT);
-        $sql_insert = "INSERT INTO usager (usLogin, usPasse, usNom, usPrenom, usMail, usDateNaissance) 
-                        VALUES ('$login', '$passe_hash', '$nom', '$prenom', '$email', '$naissanceAAAAMMDD')";
-        bdSendRequest($bd, $sql_insert);
-
-        // Mémoriser l'ID de l'utilisateur dans une variable de session
-        $_SESSION['id'] = mysqli_insert_id($bd);
-
-        // Rediriger vers la page protégée
-        header('Location: ./protegee.php');
-        exit();
-    }
-    return $erreurs;
+// si formulaire soumis, traitement de la demande d'inscription
+if (isset($_POST['btnInscription'])) {
+    $erreurs = traitementInscriptionL(); // ne revient pas quand les données soumises sont valides
+}
+else{
+    $erreurs = null;
 }
 
+/*------------------------- Etape 2 --------------------------------------------
+- génération du code HTML de la page
+------------------------------------------------------------------------------*/
 
-
-
-
-
-
-
-function affFormInscription($errors, $data) {
-
-    echo
-    '<h3>Formulaire d\'inscription</h3>',
-    '<p>Pour vous inscrire, merci de fournir les informations suivantes.</p>';
-
-    // affichage des erreurs
-    if (count($errors) > 0){
-        echo '<div id="errors">',
-        '<p>Les erreurs suivantes on été révélées lors de votre inscription :</p>',
-        '<ul>';
-        foreach($errors as $err){
-            echo '<li> ', $err,'</li>';
-        }
-        echo '</ul>',
-        '</div>';
-    }
-    // Le formulaire de connexion
-    echo
-    // '<form method="post" action="inscription_1.php" id="inscription_form">',
-    // '<form method="post" action="inscription_2.php" id="inscription_form">',
-    // '<form method="post" action="inscription_3.php" id="inscription_form">',
-    // '<form method="post" action="protegee.php" id="inscription_form">',
-    '<form method="post" action="',$_SERVER['PHP_SELF'],'" id="inscription_form">',
-    
-        '<table>',
-            '<tr>',
-                '<td>',
-                    '<label for="login">Votre login : </label>',
-                '</td>',
-                '<td>',
-                    '<input type="text" id="login" name="login" placeholder="4 à 8 lettres minuscules ou chiffres" value="'.htmlspecialchars($data['login'] ?? '').'">',
-                '</td>',
-            '</tr>',
-            '<tr>',
-                '<td>',
-                    '<label for="passe1">Votre mot de passe : </label>',
-                '</td>',
-                '<td>',
-                    '<input type="password" id="passe1" name="passe1" placeholder="4 caractères minimum">',
-                '</td>',
-            '</tr>',
-            '<tr>',
-                '<td>',
-                    '<label for="passe2">Répétez le mot de passe :</label>',
-                '</td>',
-                '<td>',
-                    '<input type="password" id="passe2" name="passe2">',
-                    
-                '</td>',
-            '</tr>',
-            '<tr>',
-                '<td>',
-                    '<label for="nom">Votre nom : </label>',
-                '</td>',
-                '<td>',
-                    '<input type="text" id="nom" name="nom" value="'.htmlspecialchars($data['nom'] ?? '').'">',
-                '</td>',
-            '</tr>',
-            '<tr>',
-                '<td>',
-                    '<label for="prenom">Votre prenom : </label>',
-                '</td>',
-                '<td>',
-                    '<input type="text" id="prenom" name="prenom" value="'.htmlspecialchars($data['prenom'] ?? '').'">',
-                '</td>',
-            '</tr>',
-            '<tr>',
-                '<td>',
-                    '<label for="email">Votre adresse email : </label>',
-                '</td>',
-                '<td>',
-                    '<input type="email" id="email" name="email" value="'.htmlspecialchars($data['email'] ?? '').'">',
-                '</td>',
-            '</tr>',
-            '<tr>',
-                '<td>',
-                    '<label for="naissance">Votre date de naissance : </label>',
-                '</td>',
-                '<td>',
-                    '<input type="date" id="naissance" name="naissance" value="'.htmlspecialchars($data['naissance'] ?? '').'">',
-                '</td>',
-            '</tr>',
-            '<tr>',
-                '<td colspan="2" id="fusion">',
-                    '<input type="submit" id="btnInscription" name="btnInscription" value="S\'inscrire">',
-                    '<input type="reset" value="Réinitialiser">',
-                '</td>',
-            '</tr>',
-        '</table>',
-    '</form>';
-}
-
-
-// affichage de l'entête
+// génération de la page
 affEntete('Inscription');
-// affichage de la barre de navigation
 affNav();
 
-
-affFormInscription($erreurs, $_POST);
-
+affFormulaireL($erreurs);
 
 affPiedDePage();
+
+// facultatif car fait automatiquement par PHP
+ob_end_flush();
+
+// ----------  Fonctions locales du script ----------- //
+
+/**
+ * Contenu de la page : affichage du formulaire d'inscription
+ *
+ * En absence de soumission (i.e. lors du premier affichage), $err est égal à null
+ * Quand l'inscription échoue, $err est un tableau de chaînes
+ *
+ * @param ?array    $err    Tableau contenant les erreurs en cas de soumission du formulaire, null lors du premier affichage
+ *
+ * @return void
+ */
+function affFormulaireL(?array $err): void {
+    // réaffichage des données soumises en cas d'erreur, sauf les mots de passe
+    if (isset($_POST['btnInscription'])){
+        $values = htmlProtegerSorties($_POST);
+    }
+    else{
+        $values['login'] = $values['nom'] = $values['prenom'] = $values['email'] = $values['naissance'] = '';
+    }
+
+    echo
+        '<section>',
+            '<h3>Formulaire d\'inscription</h3>',
+            '<p>Pour vous inscrire, merci de fournir les informations suivantes. </p>';
+
+    if (is_array($err)) {
+        echo    '<div class="error">Les erreurs suivantes ont été relevées lors de votre inscription :',
+                    '<ul>';
+        foreach ($err as $e) {
+            echo        '<li>', $e, '</li>';
+        }
+        echo        '</ul>',
+                '</div>';
+    }
+
+
+    echo
+            '<form method="post" action="inscription.php">',
+                '<table>';
+
+    affLigneInput(  'Votre login :', array('type' => 'text', 'name' => 'login', 'value' => $values['login'],
+                    'placeholder' => LMIN_LOGIN . ' à '. LMAX_LOGIN . ' lettres minuscules ou chiffres', 'required' => null));
+    affLigneInput(  'Votre mot de passe :', array('type' => 'password', 'name' => 'passe1', 'value' => '',
+                    'placeholder' => LMIN_PASSWORD . ' caractères minimum', 'required' => null));
+    affLigneInput('Répétez le mot de passe :', array('type' => 'password', 'name' => 'passe2', 'value' => '', 'required' => null));
+    affLigneInput('Votre nom :', array('type' => 'text', 'name' => 'nom', 'value' => $values['nom'], 'required' => null));
+    affLigneInput('Votre prénom :', array('type' => 'text', 'name' => 'prenom', 'value' => $values['prenom'], 'required' => null));
+    affLigneInput('Votre adresse email :', array('type' => 'email', 'name' => 'email', 'value' => $values['email'], 'required' => null));
+    affLigneInput('Votre date de naissance :', array('type' => 'date', 'name' => 'naissance', 'value' => $values['naissance'], 'required' => null));
+
+    echo
+                    '<tr>',
+                        '<td colspan="2">',
+                            '<input type="submit" name="btnInscription" value="S\'inscrire">',
+                            '<input type="reset" value="Réinitialiser">',
+                        '</td>',
+                    '</tr>',
+                '</table>',
+            '</form>',
+        '</section>';
+}
+
+
+/**
+ * Traitement d'une demande d'inscription
+ *
+ * Vérification de la validité des données
+ * Si on trouve des erreurs => return un tableau les contenant
+ * Sinon
+ *     Enregistrement du nouvel inscrit dans la base
+ *     Ouverture de la session et redirection vers la page protegee.php
+ * FinSi
+ * Toutes les erreurs détectées qui nécessitent une modification du code HTML sont considérées comme des tentatives de piratage
+ * et donc entraînent l'appel de la fonction em_sessionExit() sauf :
+ * - les éventuelles suppressions des attributs required car l'attribut required est une nouveauté apparue dans la version HTML5 et
+ *   nous souhaitons que l'application fonctionne également correctement sur les vieux navigateurs qui ne supportent pas encore HTML5
+ * - une éventuelle modification de l'input de type date en input de type text car c'est ce que font les navigateurs qui ne supportent
+ *   pas les input de type date
+ *
+ *  @return array    un tableau contenant les erreurs s'il y en a
+ */
+function traitementInscriptionL(): array {
+    
+    /* Toutes les erreurs détectées qui nécessitent une modification du code HTML sont considérées comme des tentatives de piratage 
+    et donc entraînent l'appel de la fonction sessionExit() */
+
+    if( !parametresControle('post', ['login', 'nom', 'prenom', 'naissance',
+                                     'passe1', 'passe2', 'email', 'btnInscription'])) {
+        sessionExit();   
+    }
+
+    $erreurs = [];
+
+    // vérification du login
+    $login = $_POST['login'] = trim($_POST['login']);
+
+    if (!preg_match('/^[a-z][a-z0-9]{' . (LMIN_LOGIN - 1) . ',' .(LMAX_LOGIN - 1). '}$/u',$login)) {
+        $erreurs[] = 'Le login doit contenir entre '. LMIN_LOGIN .' et '. LMAX_LOGIN .
+                    ' lettres minuscules sans accents, ou chiffres, et commencer par une lettre.';
+    }
+
+    // vérification des mots de passe
+    if ($_POST['passe1'] !== $_POST['passe2']) {
+        $erreurs[] = 'Les mots de passe doivent être identiques.';
+    }
+    $nb = mb_strlen($_POST['passe1'], encoding:'UTF-8');
+    if ($nb < LMIN_PASSWORD || $nb > LMAX_PASSWORD){
+        $erreurs[] = 'Le mot de passe doit être constitué de '. LMIN_PASSWORD . ' à ' . LMAX_PASSWORD . ' caractères.';
+    }
+
+    // vérification des noms et prénoms
+    $expRegNomPrenom = '/^[[:alpha:]]([\' -]?[[:alpha:]]+)*$/u';
+    $nom = $_POST['nom'] = trim($_POST['nom']);
+    $prenom = $_POST['prenom'] = trim($_POST['prenom']);
+    verifierTexte($nom, 'Le nom', $erreurs, LMAX_NOM, $expRegNomPrenom);
+    verifierTexte($prenom, 'Le prénom', $erreurs, LMAX_PRENOM, $expRegNomPrenom);
+
+    // vérification du format de l'adresse email
+    $email = $_POST['email'] = trim($_POST['email']);
+    verifierTexte($email, 'L\'adresse email', $erreurs, LMAX_EMAIL);
+
+    // la validation faite par le navigateur en utilisant le type email pour l'élément HTML input
+    // est moins forte que celle faite ci-dessous avec la fonction filter_var()
+    // Exemple : 'l@i' passe la validation faite par le navigateur et ne passe pas
+    // celle faite ci-dessous
+    if(! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $erreurs[] = 'L\'adresse email n\'est pas valide.';
+    }
+
+    // vérification de la date de naissance
+    if (empty($_POST['naissance'])){
+        $erreurs[] = 'La date de naissance doit être renseignée.';
+    }
+    else{
+        if(! preg_match('/^\d{4}(-\d{2}){2}$/u', $_POST['naissance'])){ //vieux navigateur qui ne supporte pas le type date ?
+            $erreurs[] = 'la date de naissance doit être au format "AAAA-MM-JJ".';
+        }
+        else{
+            list($annee, $mois, $jour) = explode('-', $_POST['naissance']);
+            if (!checkdate($mois, $jour, $annee)) {
+                $erreurs[] = 'La date de naissance n\'est pas valide.';
+            }
+            else if (mktime(0,0,0,$mois,$jour,$annee + AGE_MINIMUM) > time()) {
+                $erreurs[] = 'Vous devez avoir au moins '. AGE_MINIMUM. ' ans pour vous inscrire.';
+            }
+        }
+    }
+
+    // si erreurs --> retour
+    if (count($erreurs) > 0) {
+        return $erreurs;   //===> FIN DE LA FONCTION
+    }
+
+    // on vérifie si le login et l'adresse email ne sont pas encore utilisés que si tous les autres champs
+    // sont valides car ces 2 dernières vérifications nécessitent une connexion au serveur de base de données
+    // consommatrice de ressources système
+
+    // ouverture de la connexion à la base 
+    $bd = bdConnect();
+
+    // protection des entrées
+    $login2 = mysqli_real_escape_string($bd, $login); // fait par principe, mais inutile ici car on a déjà vérifié que le login
+                                             // ne contenait que des caractères alphanumériques
+    $email2 = mysqli_real_escape_string($bd, $email);
+    $sql = "SELECT usLogin, usMail FROM usager WHERE usLogin = '{$login2}' OR usMail = '{$email2}'";
+    $res = bdSendRequest($bd, $sql);
+
+    while($tab = mysqli_fetch_assoc($res)) {
+        if ($tab['usLogin'] == $login){
+            $erreurs[] = 'Le login existe déjà.';
+        }
+        if ($tab['usMail'] == $email){
+            $erreurs[] = 'L\'adresse email existe déjà.';
+        }
+    }
+    mysqli_free_result($res);
+
+    // si erreurs --> retour
+    if (count($erreurs) > 0) {
+        // fermeture de la connexion à la base de données
+        mysqli_close($bd);
+        return $erreurs;   //===> FIN DE LA FONCTION
+    }
+
+    // calcul du hash du mot de passe pour enregistrement dans la base.
+    $passe = password_hash($_POST['passe1'], PASSWORD_DEFAULT);
+
+    $passe = mysqli_real_escape_string($bd, $passe);
+
+    $dateNaissance = $annee*10000 + $mois*100 + $jour;
+
+    $nom = mysqli_real_escape_string($bd, $nom);
+    $prenom = mysqli_real_escape_string($bd, $prenom);
+
+    // les valeurs sont écrites en respectant l'ordre de création des champs dans la table usager
+    $sql = "INSERT INTO usager
+            VALUES (NULL, '{$nom}', '{$prenom}', {$dateNaissance}, '{$login2}','{$passe}', '{$email2}')";
+        
+    bdSendRequest($bd, $sql);
+
+    // mémorisation de l'ID dans une variable de session
+    // cette variable de session permet de savoir si l'utilisateur est authentifié
+    // mysqli_insert_id() retourne la valeur générée pour une colonne AUTO_INCREMENT par la dernière requête
+    $_SESSION['usID'] = mysqli_insert_id($bd);
+
+    // fermeture de la connexion à la base de données
+    mysqli_close($bd);
+
+    // mémorisation du login dans une variable de session (car affiché dans la barre de navigation sur toutes les pages)
+    // enregistrement dans la variable de session du login avant passage par la fonction mysqli_real_escape_string()
+    // car, d'une façon générale, celle-ci risque de rajouter des antislashs
+    // Rappel : ici, elle ne rajoutera jamais d'antislash car le login ne peut contenir que des caractères alphanumériques
+    $_SESSION['usLogin'] = $login;
+
+    // redirection vers la page protegee.php : à modifier dans le projet !
+    header('Location: protegee.php');
+    exit(); //===> Fin du script
+}

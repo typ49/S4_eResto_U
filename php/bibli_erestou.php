@@ -3,7 +3,6 @@
  *        Bibliothèque de fonctions spécifiques          *
  *        à l'application eResto-U                       *
  *********************************************************/
-require_once 'bibli_generale.php';
 
 // Force l'affichage des erreurs
 ini_set('display_errors', '1');
@@ -32,7 +31,18 @@ define ('ANNEE_MIN', ANNEE_MAX - 1);
 // Nombre de plats de catégorie 'boisson'
 define ('NB_CAT_BOISSON', 4);
 
+// limites liées aux tailles des champs de la table usager
+define('LMAX_LOGIN', 8);    // taille du champ usLogin de la table usager
+define('LMAX_NOM', 50);      // taille du champ usNom de la table usager
+define('LMAX_PRENOM', 80);   // taille du champ usPrenom de la table usager
+define('LMAX_EMAIL', 80);   // taille du champ usMail de la table usager
 
+define('LMIN_LOGIN', 4);
+
+define('AGE_MINIMUM', 16);
+
+define('LMIN_PASSWORD', 4);
+define('LMAX_PASSWORD', 20);
 //_______________________________________________________________
 /**
  * Affiche le début du code HTML d'une page (de l'élément DOCTYPE jusqu'au tag de fermeture de l'élément header)
@@ -73,33 +83,14 @@ function affEntete(string $titre, string $css = 'eResto.css', string $prefixe = 
  * @return  void
  */
 function affNav(string $prefixe = '..'): void {
-    if (session_status() == PHP_SESSION_NONE) {
-        session_start();
-    }
-
-    $authentification = estAuthentifie();
-
+    $login = estAuthentifie() ? htmlProtegerSorties($_SESSION['usLogin']) : null;
     echo '<nav>',
             '<ul>',
                 '<li><a href="', $prefixe, '/index.php"><span>&#x2630;</span> Accueil</a></li>',
-                '<li><a href="', $prefixe, '/php/menu.php"><span>&#x2630;</span> Menus et repas</a></li>';
-    if (estAuthentifie()) {
-    // Récupérer le login de l'utilisateur à partir de la base de données
-    $id = $_SESSION['id'];
-    $bd = bdconnect();
-    $sql = "SELECT usLogin FROM usager WHERE usID = $id";
-    $req = bdSendRequest($bd, $sql);
-    $res = mysqli_fetch_assoc($req);
-    $login = $res['usLogin'];
-
-    echo '<li><a href="', $prefixe, '/php/deconnexion.php">Déconnexion [', $login, ']</a></li>';
-    } else {
-        // Si l'utilisateur n'est pas authentifié, afficher le lien de connexion
-        // echo '<li><a href="', $prefixe, '/php/connexion.php">Connexion</a></li>';  // a changé quand connexion.php existeras
-        echo '<li><a href="', $prefixe, '/php/inscription.php">Connexion</a></li>'; // pour le TP4, accès a inscription.php
-    }
-     
-    echo
+                '<li><a href="', $prefixe, '/php/menu.php"><span>&#x2630;</span> Menus et repas</a></li>',
+                $login !== null ?
+                "<li><a href='{$prefixe}/php/deconnexion.php'><span>&#x2630;</span> Déconnexion [{$login}]</a></li>" :
+                "<li><a href='{$prefixe}/php/connexion.php'><span>&#x2630;</span> Connexion</a></li>",
             '</ul>',
         '</nav>',
         '<main>';
@@ -119,3 +110,78 @@ function affPiedDePage() : void{
     '</body>',
     '</html>';
 }
+
+//_______________________________________________________________
+/**
+* Détermine si l'utilisateur est authentifié
+*
+* @return bool     true si l'utilisateur est authentifié, false sinon
+*/
+function estAuthentifie(): bool {
+    return  isset($_SESSION['usID']);
+}
+
+//___________________________________________________________________
+/**
+ * Vérification des champs texte des formulaires
+ * - utilisé par les pages commentaire.php et inscription.php
+ *
+ * @param  string        $texte     texte à vérifier
+ * @param  string        $nom       chaîne à ajouter dans celle qui décrit l'erreur
+ * @param  array         $erreurs   tableau dans lequel les erreurs sont ajoutées
+ * @param  ?int          $long      longueur maximale du champ correspondant dans la base de données
+ * @param  ?string       $expReg    expression régulière que le texte doit satisfaire
+ *
+ * @return  void
+ */
+function verifierTexte(string $texte, string $nom, array &$erreurs, ?int $long = null, ?string $expReg = null) : void{
+    if (empty($texte)){
+        $erreurs[] = "$nom ne doit pas être vide.";
+    }
+    else {
+        if(strip_tags($texte) != $texte){
+            $erreurs[] = "$nom ne doit pas contenir de tags HTML.";
+        }
+        else if ($expReg !== null && ! preg_match($expReg, $texte)){
+            $erreurs[] = "$nom n'est pas valide.";
+        }
+        if ($long !== null && mb_strlen($texte, encoding:'UTF-8') > $long){
+            $erreurs[] = "$nom ne peut pas dépasser $long caractères.";
+        }
+    }
+}
+
+//_______________________________________________________________
+/**
+ * Termine une session et effectue une redirection vers la page transmise en paramètre
+ *
+ * Cette fonction est appelée quand l'utilisateur se déconnecte "normalement" et quand une
+ * tentative de piratage est détectée. On pourrait améliorer l'application en différenciant ces
+ * 2 situations. Et en cas de tentative de piratage, on pourrait faire des traitements pour
+ * stocker par exemple l'adresse IP, etc.
+ *
+ * @param string    $page URL de la page vers laquelle l'utilisateur est redirigé
+ *
+ * @return void
+ */
+function sessionExit(string $page = '../index.php'): void {
+
+    // suppression de toutes les variables de session
+    $_SESSION = array();
+
+    if (ini_get("session.use_cookies")) {
+        // suppression du cookie de session
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 86400,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+
+    session_destroy();
+
+    header("Location: $page");
+    exit();
+}
+
+

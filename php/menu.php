@@ -1,11 +1,13 @@
 <?php
 
 // chargement des bibliothèques de fonctions
-require_once 'bibli_erestou.php';
-require_once 'bibli_generale.php';
+require_once('bibli_erestou.php');
+require_once('bibli_generale.php');
 
 // bufferisation des sorties
 ob_start();
+
+// démarrage ou reprise de la session
 session_start();
 
 // affichage de l'entête
@@ -189,17 +191,13 @@ function bdMenuL(int $date, array &$menu) : bool {
  * Affichage d'un des constituants du menu.
  *
  * @param  array       $p      tableau associatif contenant les informations du plat en cours d'affichage
+ * @param  string      $catAff catégorie d'affichage du plat
  *
  * @return void
  */
-function affPlatL(array $p): void {
-
-    // utilisé pour les boutons radio
-    $categorie2name = array('entree' => 'radEntree', 'viande' => 'radPlat', 'poisson' => 'radPlat',
-                            'dessert' => 'radDessert', 'fromage' => 'radDessert', 'boisson' => 'radBoisson');
-
-    if (array_key_exists($p['plCategorie'], $categorie2name)){ //radio bonton
-        $name = $categorie2name[$p['plCategorie']];
+function affPlatL(array $p, string $catAff): void {
+    if ($catAff != 'accompagnements'){ //radio bonton
+        $name = "rad$catAff";
         $id = "{$name}{$p['plID']}";
         $type = 'radio';
     }
@@ -209,7 +207,7 @@ function affPlatL(array $p): void {
     }
 
     // protection des sorties contre les attaques XSS
-    $p['plNom'] = htmlentities($p['plNom'], ENT_QUOTES, encoding:'UTF-8');
+    $p['plNom'] = htmlProtegerSorties($p['plNom']);
 
     echo    '<input id="', $id, '" name="', $name, '" type="', $type, '" value="', $p['plID'], '" disabled>',
             '<label for="', $id,'">',
@@ -264,7 +262,7 @@ function affContenuL(): void {
     foreach($menu as $key => $value){
         echo '<section class="bcChoix"><h3>', $h3[$key], '</h3>';
         foreach ($value as $p) {
-            affPlatL($p);
+            affPlatL($p, $key);
         }
         echo '</section>';
     }
